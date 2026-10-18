@@ -7,3 +7,5 @@ Start: 2026-10-18T08:40:29Z (UTC)
 - Missing locally: MSVC, clang, docker, WSL distro, sanitizer runtimes. These run in CI only.
 
 ## Gates
+- G0-G3: done (commits 32408f6..2ba8bf6); lines backfilled at G4 close. 171 C++ tests + 21 pytest green locally.
+- G4: telemetry, Loki pusher, compose, dashboard v1, smoke tool, loki-smoke CI job. Docker unavailable locally: smoke job runs in CI; dashboard screenshot is a manual step.

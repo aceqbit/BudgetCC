@@ -9,6 +9,7 @@
 
 #include "harness/cli.hpp"
 #include "harness/instrumented.hpp"
+#include "harness/matrix.hpp"
 #include "harness/results.hpp"
 #include "support/trace_util.hpp"
 
@@ -166,4 +167,25 @@ TEST(Instrumented, MatrixSubcommandWritesAResultsFile) {
   std::filesystem::remove(out_file);
   std::ostringstream o2, e2;
   EXPECT_EQ(runMain({"budgetcc", "matrix", "--phase", "p9", "--out", out_file}, o2, e2), 2);
+}
+
+TEST(Instrumented, MatrixFiltersKeepFullMatrixRunIds) {
+  MatrixOptions mo;
+  mo.phase = "p1";
+  mo.duration = fromSec(1);
+  mo.traces = {"step_down"};
+  mo.mode = "bulk";
+  mo.buffer = 1000;
+  std::vector<std::string> ids;
+  mo.on_done = [&](const RunConfig& c, const RunResult&) { ids.push_back(c.runId() + c.algoLabel()); };
+  runMatrix(mo);
+  // 4 baselines + 3 budgets of BudgetCC, each on step_down with the deep buffer
+  ASSERT_EQ(ids.size(), 7u);
+  const auto full = expandMatrix("p1");
+  for (const auto& c : full)
+    if (c.trace == "step_down" && c.mode == "bulk" && c.buffer_pkts == 1000) {
+      bool found = false;
+      for (const auto& id : ids) found |= id == c.runId() + c.algoLabel();
+      EXPECT_TRUE(found) << c.runId();
+    }
 }

@@ -80,3 +80,26 @@ jobs:
       - run: |
           cmake --preset linux-gcc -DBUDGETCC_WERROR=OFF
           run-clang-tidy -p build/linux-gcc -quiet "src/.*\.cpp"
+
+  loki-smoke:
+    runs-on: ubuntu-latest
+    services:
+      loki:
+        image: grafana/loki:3.2.1
+        ports:
+          - 3100:3100
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: python -m pip install pytest
+      - run: python traces/fetch_real.py
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/vcpkg/archives
+          key: vcpkg-linux-${{ hashFiles('vcpkg.json') }}
+      - name: vcpkg
+        run: python tools/ci_vcpkg.py
+      - run: python tools/check.py --preset linux-gcc
+      - run: python tools/smoke_loki.py --url http://localhost:3100 --exe build/linux-gcc/budgetcc

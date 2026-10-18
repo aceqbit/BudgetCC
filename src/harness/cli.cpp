@@ -82,6 +82,9 @@ struct MatrixCliOptions {
   double duration_s = 0.0;
   std::size_t limit = 0;
   std::string loki_url;
+  std::vector<std::string> traces;
+  std::string mode;
+  std::uint32_t buffer = 0;
 };
 
 int doMatrix(const MatrixCliOptions& o, std::ostream& err) {
@@ -90,6 +93,9 @@ int doMatrix(const MatrixCliOptions& o, std::ostream& err) {
   mo.phase = o.phase;
   mo.duration = static_cast<Duration>(o.duration_s * 1e9);
   mo.limit = o.limit;
+  mo.traces = o.traces;
+  mo.mode = o.mode;
+  mo.buffer = o.buffer;
   std::unique_ptr<TelemetrySink> loki;
   if (!o.loki_url.empty()) {
     LokiConfig lc;
@@ -142,6 +148,9 @@ int runMain(const std::vector<std::string>& args, std::ostream& out, std::ostrea
   matrix->add_option("--out", mx.out_file, "results JSON file")->required();
   matrix->add_option("--loki", mx.loki_url, "push samples and summaries to this Loki base URL");
   matrix->add_option("--duration-s", mx.duration_s, "override the 60 s run length (smoke tests)");
+  matrix->add_option("--trace", mx.traces, "only runs on this trace; repeatable");
+  matrix->add_option("--mode", mx.mode, "only runs of this mode (bulk|video|fairness)");
+  matrix->add_option("--buffer", mx.buffer, "only runs with this buffer size in packets");
   matrix->add_option("--limit", mx.limit, "only the first N runs (smoke tests)");
 
   try {

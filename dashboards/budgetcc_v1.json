@@ -1,0 +1,591 @@
+{
+  "uid": "budgetcc-v1",
+  "title": "BudgetCC v1",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "timezone": "browser",
+  "refresh": "",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "tags": [
+    "budgetcc"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "trace",
+        "label": "trace",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "loki"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": false,
+        "multi": false,
+        "hide": 0,
+        "query": {
+          "label": "trace",
+          "refId": "LokiVariableQueryEditor-VariableQuery",
+          "stream": "{app=\"budgetcc\"}",
+          "type": 1
+        },
+        "current": {
+          "text": "step_down",
+          "value": "step_down"
+        }
+      },
+      {
+        "name": "buffer",
+        "label": "buffer",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "loki"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": false,
+        "multi": false,
+        "hide": 0,
+        "query": {
+          "label": "buffer",
+          "refId": "LokiVariableQueryEditor-VariableQuery",
+          "stream": "{app=\"budgetcc\"}",
+          "type": 1
+        },
+        "current": {
+          "text": "1000",
+          "value": "1000"
+        }
+      },
+      {
+        "name": "phase",
+        "label": "phase",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "loki"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": false,
+        "multi": false,
+        "hide": 0,
+        "query": {
+          "label": "phase",
+          "refId": "LokiVariableQueryEditor-VariableQuery",
+          "stream": "{app=\"budgetcc\"}",
+          "type": 1
+        },
+        "current": {
+          "text": "p1",
+          "value": "p1"
+        }
+      },
+      {
+        "name": "mode",
+        "label": "mode",
+        "type": "custom",
+        "query": "bulk,video,fairness,bench",
+        "multi": false,
+        "includeAll": false,
+        "hide": 0,
+        "options": [
+          {
+            "selected": true,
+            "text": "bulk",
+            "value": "bulk"
+          },
+          {
+            "selected": false,
+            "text": "video",
+            "value": "video"
+          },
+          {
+            "selected": false,
+            "text": "fairness",
+            "value": "fairness"
+          },
+          {
+            "selected": false,
+            "text": "bench",
+            "value": "bench"
+          }
+        ],
+        "current": {
+          "text": "bulk",
+          "value": "bulk"
+        }
+      },
+      {
+        "name": "budget",
+        "label": "budget",
+        "type": "custom",
+        "query": "none,100,150,300",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "hide": 0,
+        "options": [
+          {
+            "selected": true,
+            "text": "none",
+            "value": "none"
+          },
+          {
+            "selected": false,
+            "text": "100",
+            "value": "100"
+          },
+          {
+            "selected": true,
+            "text": "150",
+            "value": "150"
+          },
+          {
+            "selected": false,
+            "text": "300",
+            "value": "300"
+          }
+        ],
+        "current": {
+          "text": [
+            "none",
+            "150"
+          ],
+          "value": [
+            "none",
+            "150"
+          ]
+        }
+      },
+      {
+        "name": "budget_line",
+        "label": "budget_line",
+        "type": "custom",
+        "query": "100,150,300",
+        "multi": false,
+        "includeAll": false,
+        "hide": 0,
+        "options": [
+          {
+            "selected": false,
+            "text": "100",
+            "value": "100"
+          },
+          {
+            "selected": true,
+            "text": "150",
+            "value": "150"
+          },
+          {
+            "selected": false,
+            "text": "300",
+            "value": "300"
+          }
+        ],
+        "current": {
+          "text": "150",
+          "value": "150"
+        }
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Rate versus capacity",
+      "description": "Goodput received per 10 ms interval against the trace capacity.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 9
+      },
+      "interval": "100ms",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "avg_over_time({app=\"budgetcc\", kind=\"sample\", trace=~\"$trace\", buffer=~\"$buffer\", phase=~\"$phase\", mode=~\"$mode\", budget=~\"$budget\"} | json | unwrap rate_mbps | __error__=\"\" [$__interval]) by (algo)",
+          "refId": "A",
+          "legendFormat": "{{algo}}",
+          "queryType": "range"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "max(max_over_time({app=\"budgetcc\", kind=\"sample\", trace=~\"$trace\", buffer=~\"$buffer\", phase=~\"$phase\", mode=~\"$mode\", budget=~\"$budget\"} | json | unwrap cap_mbps | __error__=\"\" [$__interval]))",
+          "refId": "B",
+          "legendFormat": "capacity",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Mbits",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "capacity"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "dark-gray"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Queue delay with budget line",
+      "description": "Ground-truth queue delay at the bottleneck. The red dashed line is the budget D.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 12,
+        "h": 9
+      },
+      "interval": "100ms",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "max_over_time({app=\"budgetcc\", kind=\"sample\", trace=~\"$trace\", buffer=~\"$buffer\", phase=~\"$phase\", mode=~\"$mode\", budget=~\"$budget\"} | json | unwrap q_ms | __error__=\"\" [$__interval]) by (algo)",
+          "refId": "A",
+          "legendFormat": "{{algo}}",
+          "queryType": "range"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "vector($budget_line)",
+          "refId": "B",
+          "legendFormat": "budget D",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 150
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "budget D"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    4,
+                    4
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "In-flight data",
+      "description": "Bytes sent and not yet acknowledged: window behaviour and bufferbloat.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 9,
+        "w": 12,
+        "h": 9
+      },
+      "interval": "100ms",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "avg_over_time({app=\"budgetcc\", kind=\"sample\", trace=~\"$trace\", buffer=~\"$buffer\", phase=~\"$phase\", mode=~\"$mode\", budget=~\"$budget\"} | json | unwrap inflight_kb | __error__=\"\" [$__interval]) by (algo)",
+          "refId": "A",
+          "legendFormat": "{{algo}}",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kbytes",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "Summary (M1-M6)",
+      "description": "One row per algorithm for the selected trace, buffer, phase and mode.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 18,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "avg_over_time({app=\"budgetcc\", kind=\"summary\", trace=~\"$trace\", buffer=~\"$buffer\", phase=~\"$phase\", mode=~\"$mode\", budget=~\"$budget\"} | json | unwrap utilisation_pct | __error__=\"\" [$__range]) by (algo)",
+          "refId": "A",
+          "legendFormat": "",
+          "queryType": "instant",
+          "instant": true,
+          "range": false
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "avg_over_time({app=\"budgetcc\", kind=\"summary\", trace=~\"$trace\", buffer=~\"$buffer\", phase=~\"$phase\", mode=~\"$mode\", budget=~\"$budget\"} | json | unwrap p95_owd_ms | __error__=\"\" [$__range]) by (algo)",
+          "refId": "B",
+          "legendFormat": "",
+          "queryType": "instant",
+          "instant": true,
+          "range": false
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "avg_over_time({app=\"budgetcc\", kind=\"summary\", trace=~\"$trace\", buffer=~\"$buffer\", phase=~\"$phase\", mode=~\"$mode\", budget=~\"$budget\"} | json | unwrap p99_owd_ms | __error__=\"\" [$__range]) by (algo)",
+          "refId": "C",
+          "legendFormat": "",
+          "queryType": "instant",
+          "instant": true,
+          "range": false
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "avg_over_time({app=\"budgetcc\", kind=\"summary\", trace=~\"$trace\", buffer=~\"$buffer\", phase=~\"$phase\", mode=~\"$mode\", budget=~\"$budget\"} | json | unwrap violation_pct | __error__=\"\" [$__range]) by (algo)",
+          "refId": "D",
+          "legendFormat": "",
+          "queryType": "instant",
+          "instant": true,
+          "range": false
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "avg_over_time({app=\"budgetcc\", kind=\"summary\", trace=~\"$trace\", buffer=~\"$buffer\", phase=~\"$phase\", mode=~\"$mode\", budget=~\"$budget\"} | json | unwrap recovery_ms | __error__=\"\" [$__range]) by (algo)",
+          "refId": "E",
+          "legendFormat": "",
+          "queryType": "instant",
+          "instant": true,
+          "range": false
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "avg_over_time({app=\"budgetcc\", kind=\"summary\", trace=~\"$trace\", buffer=~\"$buffer\", phase=~\"$phase\", mode=~\"$mode\", budget=~\"$budget\"} | json | unwrap jain | __error__=\"\" [$__range]) by (algo)",
+          "refId": "F",
+          "legendFormat": "",
+          "queryType": "instant",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "algo": "algorithm",
+              "Value #A": "M1 utilisation %",
+              "Value #B": "M2 p95 OWD ms",
+              "Value #C": "M3 p99 OWD ms",
+              "Value #D": "M4 violation %",
+              "Value #E": "M5 recovery ms",
+              "Value #F": "M6 Jain"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "algorithm",
+            "desc": false
+          }
+        ]
+      }
+    }
+  ]
+}

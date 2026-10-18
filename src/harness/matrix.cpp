@@ -1,5 +1,6 @@
 #include "harness/matrix.hpp"
 
+#include <algorithm>
 #include <chrono>
 
 #include "harness/instrumented.hpp"
@@ -9,6 +10,14 @@ namespace bcc {
 
 MatrixResult runMatrix(const MatrixOptions& opt) {
   std::vector<RunConfig> runs = expandMatrix(opt.phase);
+  runs.erase(std::remove_if(runs.begin(), runs.end(),
+                            [&](const RunConfig& c) {
+                              if (!opt.mode.empty() && c.mode != opt.mode) return true;
+                              if (opt.buffer != 0 && c.buffer_pkts != opt.buffer) return true;
+                              return !opt.traces.empty() &&
+                                     std::find(opt.traces.begin(), opt.traces.end(), c.trace) == opt.traces.end();
+                            }),
+             runs.end());
   if (opt.limit != 0 && opt.limit < runs.size()) runs.resize(opt.limit);
   std::map<std::string, Trace> traces;
   MatrixResult out;

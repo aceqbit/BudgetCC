@@ -1,1 +1,3 @@
 {"git_sha":"8569c3f593a0","change":"P1","events_per_s":3455485.400063955,"events_per_s_no_telemetry":4671430.448363404,"cpu_per_ack_ns":39.698,"allocs_per_pkt":4.94541231126597,"matrix_runtime_s":5637.048002}
+{"git_sha":"23a201e34d0b","change":"E1","events_per_s":1803894.1633375175,"events_per_s_no_telemetry":2977352.6599279307,"cpu_per_ack_ns":63.277,"allocs_per_pkt":0}
+{"git_sha":"80451b6cd16c","change":"E2","events_per_s":6334467.419914713,"events_per_s_no_telemetry":11093989.049037766,"cpu_per_ack_ns":17.175,"allocs_per_pkt":0}

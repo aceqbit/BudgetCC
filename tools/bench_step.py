@@ -13,6 +13,8 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+# Fewer scheduler interruptions on a busy desktop; 0 (no flag) elsewhere.
+HIGH_PRIORITY = getattr(subprocess, "HIGH_PRIORITY_CLASS", 0)
 
 
 def main(argv=None):
@@ -30,7 +32,7 @@ def main(argv=None):
     with tempfile.TemporaryDirectory() as d:
         subprocess.run([str(exe), "--out", str(Path(d) / "bench.json"), "--phase", a.phase, "--git-sha", sha,
                         "--history", str(ROOT / "results" / "bench_history.jsonl"), "--change", a.change],
-                       cwd=ROOT, check=True)
+                       cwd=ROOT, check=True, creationflags=HIGH_PRIORITY)
     return 0
 
 

@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "core/filters.hpp"
+#include "reference/naive_filters.hpp"
 
 using namespace bcc;
 
@@ -86,4 +87,73 @@ TEST(Filters, WarmRateDividesByDataAgeWhileTheWindowFills) {
   // once the window is full both agree
   for (int i = 50; i < 400; ++i) rw.add(fromMs(100 + i), 1250);
   EXPECT_DOUBLE_EQ(rw.rateBpsWarm(fromMs(499), fromMs(250)), rw.rateBps(fromMs(499), fromMs(250)));
+}
+
+TEST(Filters, ExtremumDifferentialAgainstPhase1OnRandomStreams) {
+  for (std::uint64_t seed = 1; seed <= 20; ++seed) {
+    std::mt19937_64 rng(seed);
+    const Duration window = fromMs(10 + static_cast<int>(rng() % 500));
+    WindowedMin<std::int64_t> mn(window);
+    WindowedMax<double> mx(window);
+    bccref::WindowedMin<std::int64_t> rmn(window);
+    bccref::WindowedMax<double> rmx(window);
+    Time t = 0;
+    for (int i = 0; i < 5'000; ++i) {
+      t += static_cast<Time>(rng() % 20'000'000);  // 0-20 ms, duplicates allowed
+      const std::int64_t v = static_cast<std::int64_t>(rng() % 50);  // many ties
+      mn.update(t, v);
+      rmn.update(t, v);
+      mx.update(t, static_cast<double>(v) * 0.5);
+      rmx.update(t, static_cast<double>(v) * 0.5);
+      const Time now = t + static_cast<Time>(rng() % 30'000'000);  // queries may lag behind the last update
+      ASSERT_EQ(mn.empty(now), rmn.empty(now));
+      ASSERT_EQ(mx.empty(now), rmx.empty(now));
+      if (!rmn.empty(now)) {
+        ASSERT_EQ(mn.get(now), rmn.get(now));
+        ASSERT_EQ(mx.get(now), rmx.get(now));
+      }
+    }
+  }
+}
+
+TEST(Filters, ExtremumGrowsPastItsInitialCapacity) {
+  WindowedMin<int> mn(fromSec(100));
+  for (int i = 0; i < 1000; ++i) mn.update(fromMs(i), 1000 - i);  // strictly decreasing: nothing is dominated
+  EXPECT_EQ(mn.get(fromMs(999)), 1);
+  WindowedMax<int> mx(fromSec(100));
+  for (int i = 0; i < 1000; ++i) mx.update(fromMs(i), i);
+  EXPECT_EQ(mx.get(fromMs(999)), 999);
+}
+
+TEST(Filters, RateWindowDifferentialAgainstPhase1) {
+  for (std::uint64_t seed = 1; seed <= 20; ++seed) {
+    std::mt19937_64 rng(seed);
+    const Duration retention = fromMs(100 + static_cast<int>(rng() % 900));
+    RateWindow rw(retention);
+    bccref::RateWindow ref(retention);
+    Time t = fromMs(static_cast<int>(rng() % 100));
+    for (int i = 0; i < 20'000; ++i) {
+      t += static_cast<Time>(rng() % 4'000'000);
+      const std::uint32_t b = 1 + static_cast<std::uint32_t>(rng() % 1500);
+      rw.add(t, b);
+      ref.add(t, b);
+      if (rng() % 3 == 0) {
+        const Duration w = fromMs(1 + static_cast<int>(rng() % 1200));  // also windows longer than the retention
+        const Time now = t + static_cast<Time>(rng() % 50'000'000);
+        ASSERT_EQ(rw.rateBps(now, w), ref.rateBps(now, w));
+        ASSERT_EQ(rw.rateBpsWarm(now, w), ref.rateBpsWarm(now, w));
+      }
+    }
+  }
+}
+
+TEST(Filters, RateWindowGrowsPastItsInitialCapacity) {
+  RateWindow rw(fromSec(10));
+  bccref::RateWindow ref(fromSec(10));
+  for (int i = 1; i <= 5000; ++i) {
+    rw.add(fromMs(i), 100);
+    ref.add(fromMs(i), 100);
+  }
+  EXPECT_EQ(rw.rateBps(fromMs(5000), fromSec(10)), ref.rateBps(fromMs(5000), fromSec(10)));
+  EXPECT_EQ(rw.rateBps(fromMs(5000), fromMs(50)), ref.rateBps(fromMs(5000), fromMs(50)));
 }

@@ -150,9 +150,21 @@ void TelemetrySink::drain() {
   c_.bytes_written += writer_.bytesWritten() - formatted_bytes_before;
 }
 
+namespace {
+// A numeric host needs no name resolution. httplib resolves names through glibc's getaddrinfo_a when a
+// connection timeout is set, and that helper thread is invisible to TSan's allocator (it segfaults).
+bool isNumericHost(const std::string& url) {
+  const auto scheme = url.find("://");
+  const std::string host = url.substr(scheme == std::string::npos ? 0 : scheme + 3);
+  const std::string name = host.substr(0, host.find_first_of(":/"));
+  return !name.empty() && name.find_first_not_of("0123456789.") == std::string::npos;
+}
+}  // namespace
+
 int TelemetrySink::post(const std::string& body) {
   httplib::Client cli(cfg_.url);
-  cli.set_connection_timeout(cfg_.connect_timeout_ms / 1000, (cfg_.connect_timeout_ms % 1000) * 1000);
+  if (!isNumericHost(cfg_.url))
+    cli.set_connection_timeout(cfg_.connect_timeout_ms / 1000, (cfg_.connect_timeout_ms % 1000) * 1000);
   cli.set_read_timeout(10, 0);
   cli.set_write_timeout(10, 0);
   const auto res = cli.Post("/loki/api/v1/push", body, "application/json");

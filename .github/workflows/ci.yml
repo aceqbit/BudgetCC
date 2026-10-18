@@ -57,12 +57,6 @@ jobs:
       - name: vcpkg
         run: python tools/ci_vcpkg.py
       - run: python tools/check.py --preset ${{ matrix.preset }}
-      - name: tsan diagnostics
-        if: matrix.name == 'tsan' && failure()
-        continue-on-error: true
-        run: |
-          sudo apt-get install -y gdb >/dev/null
-          gdb -batch -ex run -ex bt --args build/tsan/budgetcc_tests --gtest_filter=LokiPusher.ClientErrorsAreNotRetried 2>&1 | tail -n 40 | python tools/ci_emit.py
 
   coverage:
     runs-on: ubuntu-latest

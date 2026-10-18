@@ -29,9 +29,10 @@ namespace bcc {
 
 namespace {
 std::string trim(std::string s) {
-  while (!s.empty() && (s.back() == '\n' || s.back() == '\r' || s.back() == ' ')) s.pop_back();
+  const auto blank = [](char c) { return c == '\n' || c == '\r' || c == ' '; };
+  while (!s.empty() && blank(s.back())) s.pop_back();
   std::size_t i = 0;
-  while (i < s.size() && s[i] == ' ') ++i;
+  while (i < s.size() && blank(s[i])) ++i;
   return s.substr(i);
 }
 

@@ -115,19 +115,21 @@ set(BCC_ALL bcc_harness bcc_telemetry bcc_transport bcc_cc bcc_link bcc_core)
 add_executable(budgetcc src/main.cpp)
 target_link_libraries(budgetcc PRIVATE ${BCC_ALL} CLI11::CLI11)
 
-file(GLOB_RECURSE BENCH_SRCS CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/bench/*.cpp)
-if(BENCH_SRCS)
-  add_executable(budgetcc_bench ${BENCH_SRCS})
-  target_link_libraries(budgetcc_bench PRIVATE ${BCC_ALL} CLI11::CLI11)
-  target_compile_definitions(budgetcc_bench PRIVATE BUDGETCC_COUNT_ALLOCS)
-endif()
+# Benchmark logic is a library so tests/bench can exercise it; the operator-new counter lives only in
+# the bench executable and the test executable, never in the budgetcc binary.
+add_library(bcc_bench STATIC bench/bench_core.cpp bench/alloc_counter.cpp)
+target_include_directories(bcc_bench PUBLIC ${CMAKE_SOURCE_DIR}/bench)
+target_link_libraries(bcc_bench PUBLIC ${BCC_ALL})
+
+add_executable(budgetcc_bench bench/bench_main.cpp)
+target_link_libraries(budgetcc_bench PRIVATE bcc_bench CLI11::CLI11)
 
 enable_testing()
 file(GLOB_RECURSE TEST_SRCS CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/tests/*.cpp)
 if(TEST_SRCS)
   add_executable(budgetcc_tests ${TEST_SRCS})
   target_include_directories(budgetcc_tests PRIVATE ${CMAKE_SOURCE_DIR}/tests ${CMAKE_SOURCE_DIR})
-  target_link_libraries(budgetcc_tests PRIVATE ${BCC_ALL} GTest::gtest GTest::gtest_main)
+  target_link_libraries(budgetcc_tests PRIVATE bcc_bench ${BCC_ALL} GTest::gtest GTest::gtest_main)
   include(GoogleTest)
   gtest_discover_tests(budgetcc_tests DISCOVERY_TIMEOUT 60 PROPERTIES TIMEOUT 120)
 endif()

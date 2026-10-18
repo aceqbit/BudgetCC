@@ -114,6 +114,7 @@ TEST(Results, JsonHasContractFieldsInOrderAndEnvBlock) {
   const std::string env = environmentJson();
   for (const char* k : {"cpu", "os", "compiler", "version", "flags", "build_type", "power_plan"})
     EXPECT_NE(env.find(std::string("\"") + k + "\""), std::string::npos) << k;
+  EXPECT_EQ(env.find("\"os\":\"\n"), std::string::npos);  // no stray newline from the OS probe
   const std::string file = resultsFileJson(ResultsHeader{"p1", 1.5}, {j, j});
   EXPECT_NE(file.find("\"schema\":1"), std::string::npos);
   EXPECT_NE(file.find("\"phase\":\"p1\""), std::string::npos);

@@ -163,8 +163,12 @@ bool isNumericHost(const std::string& url) {
 
 int TelemetrySink::post(const std::string& body) {
   httplib::Client cli(cfg_.url);
-  if (!isNumericHost(cfg_.url))
+  // httplib's default connection timeout (300 s) is positive, so only an explicit 0 avoids getaddrinfo_a.
+  if (isNumericHost(cfg_.url)) {
+    cli.set_connection_timeout(0, 0);
+  } else {
     cli.set_connection_timeout(cfg_.connect_timeout_ms / 1000, (cfg_.connect_timeout_ms % 1000) * 1000);
+  }
   cli.set_read_timeout(10, 0);
   cli.set_write_timeout(10, 0);
   const auto res = cli.Post("/loki/api/v1/push", body, "application/json");

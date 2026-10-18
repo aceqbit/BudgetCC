@@ -3,3 +3,4 @@
 {"git_sha":"80451b6cd16c","change":"E2","events_per_s":6334467.419914713,"events_per_s_no_telemetry":11093989.049037766,"cpu_per_ack_ns":17.175,"allocs_per_pkt":0}
 {"git_sha":"d67e805e1b47","change":"E3","events_per_s":4269467.502837377,"events_per_s_no_telemetry":5972678.306293418,"cpu_per_ack_ns":40.3825,"allocs_per_pkt":0}
 {"git_sha":"8dc1f5081800","change":"E5","events_per_s":3381157.473020314,"events_per_s_no_telemetry":4659975.3939296575,"cpu_per_ack_ns":42.3265,"allocs_per_pkt":0}
+{"git_sha":"74eb9c62933b","change":"E4","events_per_s":3106637.12823288,"events_per_s_no_telemetry":4619992.1198454145,"cpu_per_ack_ns":34.4885,"allocs_per_pkt":0}

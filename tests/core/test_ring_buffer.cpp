@@ -116,3 +116,12 @@ TEST(SpscRing, DifferentialAgainstMutexRingOnRandomOperations) {
     ASSERT_EQ(a.dropped(), b.dropped());
   }
 }
+
+TEST(SpscRing, HeadTailAndDropCounterLiveOnSeparateCacheLines) {
+  using R = SpscRing<std::uint64_t>;
+  EXPECT_GE(R::kTailOffset - R::kHeadOffset, kCacheLine);
+  EXPECT_GE(R::kDroppedOffset - R::kTailOffset, kCacheLine);
+  EXPECT_EQ(R::kHeadOffset % kCacheLine, 0u);
+  EXPECT_EQ(R::kTailOffset % kCacheLine, 0u);
+  EXPECT_EQ(kCacheLine, 64u);
+}

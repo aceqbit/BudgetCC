@@ -56,6 +56,13 @@ jobs:
           key: vcpkg-linux-${{ hashFiles('vcpkg.json') }}
       - name: vcpkg
         run: python tools/ci_vcpkg.py
+      - name: tsan diagnostics
+        if: matrix.name == 'tsan' && always()
+        continue-on-error: true
+        run: |
+          cmake --preset tsan >/dev/null && cmake --build --preset tsan >/dev/null
+          out=$(build/tsan/budgetcc_tests --gtest_filter='LokiPusher.*' 2>&1 | head -c 3500 | python3 -c "import sys;print(sys.stdin.read().replace('%','%25').replace('\r','').replace('\n','%0A'))")
+          echo "::error::$out"
       - run: python tools/check.py --preset ${{ matrix.preset }}
 
   coverage:

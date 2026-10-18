@@ -12,8 +12,8 @@ namespace bcc {
 class SampleJsonWriter {
  public:
   explicit SampleJsonWriter(bool extras = true) : extras_(extras) {}
-  // PHASE1-NAIVE(E4): builds a fresh std::string per sample.
-  std::string write(const Sample& s);
+  // Appends the line to `out` (a buffer the caller reuses); no allocation once the buffer has grown.
+  void append(std::string& out, const Sample& s);
   std::uint64_t bytesWritten() const { return bytes_written_; }
 
  private:

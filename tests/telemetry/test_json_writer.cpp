@@ -3,6 +3,7 @@
 #include <clocale>
 #include <random>
 
+#include "reference/naive_json_writer.hpp"
 #include "support/flat_json.hpp"
 #include "telemetry/json_writer.hpp"
 
@@ -21,11 +22,33 @@ Sample specSample() {
   s.lost = 0;
   return s;
 }
+std::string lineOf(SampleJsonWriter& w, const Sample& s) {
+  std::string out;
+  w.append(out, s);
+  return out;
+}
+
+Sample randomSample(std::mt19937_64& rng) {
+  Sample s;
+  s.t_ms = static_cast<std::int32_t>(rng() % 60000);
+  s.run = static_cast<std::uint32_t>(rng() % 250);
+  s.flow = static_cast<std::int32_t>(rng() % 2);
+  s.rate_mbps = static_cast<double>(rng() % 100000) / 100.0;
+  s.cap_mbps = static_cast<double>(rng() % 100000) / 100.0;
+  s.q_ms = static_cast<double>(rng() % 5000000) / 1000.0;
+  s.owd_ms = static_cast<double>(rng() % 5000000) / 1000.0;
+  s.inflight_kb = static_cast<std::int32_t>(rng() % 3000);
+  s.lost = static_cast<std::int32_t>(rng() % 50);
+  s.chat_mbps = static_cast<double>(rng() % 1000) / 7.0;
+  s.cwnd_kb = static_cast<double>(rng() % 100000) / 3.0;
+  s.qest_ms = static_cast<double>(rng() % 100000) / 11.0;
+  return s;
+}
 }  // namespace
 
 TEST(JsonWriter, GoldenLineEqualsTheSpecSample) {
   SampleJsonWriter w(false);
-  EXPECT_EQ(w.write(specSample()),
+  EXPECT_EQ(lineOf(w, specSample()),
             R"({"t_ms":1230,"run":"r0042","rate_mbps":8.4,"cap_mbps":9.1,"q_ms":42.0,"owd_ms":71.5,"inflight_kb":96,"lost":0})");
 }
 
@@ -36,7 +59,7 @@ TEST(JsonWriter, ExtrasFollowTheMandatoryFieldsAndParse) {
   s.chat_mbps = 11.987654;
   s.cwnd_kb = 250.25;
   s.qest_ms = 3.14159;
-  const std::string line = w.write(s);
+  const std::string line = lineOf(w, s);
   EXPECT_EQ(line,
             R"({"t_ms":1230,"run":"r0042","rate_mbps":8.4,"cap_mbps":9.1,"q_ms":42.0,"owd_ms":71.5,"inflight_kb":96,"lost":0,"flow":1,"chat_mbps":11.988,"cwnd_kb":250.2,"qest_ms":3.1})");
   const auto j = bcc_test::parseFlatJson(line);
@@ -55,7 +78,7 @@ TEST(JsonWriter, NumbersAreLocaleIndependent) {
   SampleJsonWriter w(true);
   Sample s = specSample();
   s.rate_mbps = 1234.5;
-  const std::string line = w.write(s);
+  const std::string line = lineOf(w, s);
   std::setlocale(LC_ALL, saved.c_str());
   EXPECT_NE(line.find("\"rate_mbps\":1234.5"), std::string::npos);
   EXPECT_EQ(line.find(','), line.find(",\"run\""));  // the first comma separates fields, none inside numbers
@@ -66,24 +89,32 @@ TEST(JsonWriter, EveryRandomSampleIsValidJsonAndBytesAreCounted) {
   SampleJsonWriter w(true);
   std::uint64_t total = 0;
   for (int i = 0; i < 10'000; ++i) {
-    Sample s;
-    s.t_ms = static_cast<std::int32_t>(rng() % 60000);
-    s.run = static_cast<std::uint32_t>(rng() % 250);
-    s.flow = static_cast<std::int32_t>(rng() % 2);
-    s.rate_mbps = static_cast<double>(rng() % 100000) / 100.0;
-    s.cap_mbps = static_cast<double>(rng() % 100000) / 100.0;
-    s.q_ms = static_cast<double>(rng() % 5000000) / 1000.0;
-    s.owd_ms = static_cast<double>(rng() % 5000000) / 1000.0;
-    s.inflight_kb = static_cast<std::int32_t>(rng() % 3000);
-    s.lost = static_cast<std::int32_t>(rng() % 50);
-    s.chat_mbps = static_cast<double>(rng() % 1000) / 7.0;
-    s.cwnd_kb = static_cast<double>(rng() % 100000) / 3.0;
-    s.qest_ms = static_cast<double>(rng() % 100000) / 11.0;
-    const std::string line = w.write(s);
+    const Sample s = randomSample(rng);
+    const std::string line = lineOf(w, s);
     total += line.size();
     const auto j = bcc_test::parseFlatJson(line);  // throws if the text is not valid flat JSON
     ASSERT_EQ(j.size(), 12u);
     ASSERT_EQ(j.at("t_ms").d, s.t_ms);
   }
   EXPECT_EQ(w.bytesWritten(), total);
+}
+
+TEST(JsonWriter, ReusedBufferIsByteEqualToPhase1WriterOnRandomSamples) {
+  std::mt19937_64 rng(31);
+  for (bool extras : {false, true}) {
+    SampleJsonWriter fast(extras);
+    bccref::NaiveSampleJsonWriter naive(extras);
+    std::string buf;
+    std::string joined;
+    std::string expected;
+    for (int i = 0; i < 10'000; ++i) {
+      const Sample s = randomSample(rng);
+      const std::size_t start = buf.size();
+      fast.append(buf, s);
+      expected += naive.write(s);
+      joined += buf.substr(start);  // the writer appends; earlier content is untouched
+    }
+    EXPECT_EQ(buf, expected);
+    EXPECT_EQ(joined, expected);
+  }
 }

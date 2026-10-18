@@ -1,53 +1,54 @@
 #pragma once
-// Bounded FIFO between the simulation thread (producer) and the pusher thread (consumer).
+// Bounded lock-free FIFO between the simulation thread (single producer) and the pusher thread (single consumer).
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
-#include <mutex>
+#include <type_traits>
 #include <vector>
 
 namespace bcc {
 
-// PHASE1-NAIVE(E4): mutex-protected queue. The Phase 2 SPSC ring keeps this interface.
+// Wait-free SPSC ring (E4). Positions grow monotonically; the slot is position % capacity, so any capacity works.
+// push() never blocks: a full ring drops the item and counts it. T must be trivially copyable.
 template <class T>
-class MutexRing {
- public:
-  explicit MutexRing(std::size_t capacity) : buf_(capacity) {}
+class SpscRing {
+  static_assert(std::is_trivially_copyable<T>::value, "ring items cross threads by memcpy");
 
-  // Never blocks. Returns false and counts a dropped sample when full.
+ public:
+  explicit SpscRing(std::size_t capacity) : buf_(capacity) {}
+
+  // Producer thread only.
   bool push(const T& v) {
-    std::lock_guard<std::mutex> lk(m_);
-    if (count_ == buf_.size()) {
-      ++dropped_;
+    const std::uint64_t tail = tail_.load(std::memory_order_relaxed);
+    if (tail - head_.load(std::memory_order_acquire) == buf_.size()) {
+      dropped_.store(dropped_.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
       return false;
     }
-    buf_[(head_ + count_) % buf_.size()] = v;
-    ++count_;
+    buf_[static_cast<std::size_t>(tail % buf_.size())] = v;
+    tail_.store(tail + 1, std::memory_order_release);
     return true;
   }
+  // Consumer thread only.
   bool pop(T& out) {
-    std::lock_guard<std::mutex> lk(m_);
-    if (count_ == 0) return false;
-    out = buf_[head_];
-    head_ = (head_ + 1) % buf_.size();
-    --count_;
+    const std::uint64_t head = head_.load(std::memory_order_relaxed);
+    if (head == tail_.load(std::memory_order_acquire)) return false;
+    out = buf_[static_cast<std::size_t>(head % buf_.size())];
+    head_.store(head + 1, std::memory_order_release);
     return true;
   }
+  // Any thread; exact only when the ring is quiescent.
   std::size_t size() const {
-    std::lock_guard<std::mutex> lk(m_);
-    return count_;
+    const std::uint64_t head = head_.load(std::memory_order_acquire);
+    return static_cast<std::size_t>(tail_.load(std::memory_order_acquire) - head);
   }
   std::size_t capacity() const { return buf_.size(); }
-  std::uint64_t dropped() const {
-    std::lock_guard<std::mutex> lk(m_);
-    return dropped_;
-  }
+  std::uint64_t dropped() const { return dropped_.load(std::memory_order_relaxed); }
 
  private:
-  mutable std::mutex m_;
   std::vector<T> buf_;
-  std::size_t head_ = 0;
-  std::size_t count_ = 0;
-  std::uint64_t dropped_ = 0;
+  std::atomic<std::uint64_t> head_{0};  // next position to pop (written by the consumer)
+  std::atomic<std::uint64_t> tail_{0};  // next position to push (written by the producer)
+  std::atomic<std::uint64_t> dropped_{0};
 };
 
 }  // namespace bcc

@@ -5,6 +5,7 @@
 #include <map>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -23,7 +24,7 @@ struct LokiConfig {
   int max_attempts = 4;
   int backoff_ms = 100;                 // doubled after every failed attempt
   int connect_timeout_ms = 2000;
-  int flush_interval_ms = 1000;         // PHASE1-NAIVE(E4): the pusher wakes once per second
+  int flush_interval_ms = 1000;         // the pusher wakes at least this often
   std::int64_t base_ns = 0;             // unix-epoch ns of simulated t = 0; 0 = now - 60 s
   std::size_t ring_capacity = 65536;
 };
@@ -40,12 +41,39 @@ struct TelemetryCounters {
 // Unix-epoch nanoseconds "now - longest trace length", so that base + simulated time never lies in the future.
 std::int64_t defaultBaseNs();
 
-// {"streams":[{"stream":{labels},"values":[["<ns>","<line>"],...]},...]}
+// The lines of one stream in a push batch, stored contiguously so a batch costs no per-line allocation.
 struct StreamLines {
   Labels labels;
-  std::vector<std::pair<std::int64_t, std::string>> lines;  // (unix ns, JSON line)
+  std::vector<std::int64_t> ts;      // unix ns per line
+  std::string text;                  // all lines back to back
+  std::vector<std::uint32_t> ends;   // end offset of each line in `text`
+
+  std::size_t size() const { return ts.size(); }
+  std::string_view line(std::size_t i) const {
+    const std::uint32_t begin = i == 0 ? 0 : ends[i - 1];
+    return std::string_view(text).substr(begin, ends[i] - begin);
+  }
+  void add(std::int64_t t, std::string_view l) {
+    ts.push_back(t);
+    text.append(l);
+    ends.push_back(static_cast<std::uint32_t>(text.size()));
+  }
+  // `write(std::string&)` appends one line to the shared text buffer.
+  template <class F>
+  void addWith(std::int64_t t, F&& write) {
+    ts.push_back(t);
+    write(text);
+    ends.push_back(static_cast<std::uint32_t>(text.size()));
+  }
+  void clear() {
+    ts.clear();
+    text.clear();
+    ends.clear();
+  }
 };
-std::string buildPushBody(const std::vector<StreamLines>& streams);
+
+// Appends {"streams":[{"stream":{labels},"values":[["<ns>","<line>"],...]},...]} (empty streams are skipped).
+void appendPushBody(std::string& out, const std::vector<StreamLines>& streams);
 
 class TelemetrySink {
  public:
@@ -72,12 +100,13 @@ class TelemetrySink {
   };
   void loop();
   void drain();
-  void pushBatch(std::vector<StreamLines>& batch, std::size_t lines);
+  void flushBatches(std::size_t& pending);
+  void pushBatch(const std::vector<StreamLines>& batch, std::size_t lines);
   int post(const std::string& body);
 
   LokiConfig cfg_;
   std::int64_t base_ns_;
-  MutexRing<Sample> ring_;
+  SpscRing<Sample> ring_;
   mutable std::mutex m_;
   std::condition_variable cv_;
   std::condition_variable flushed_;
@@ -86,7 +115,10 @@ class TelemetrySink {
   std::vector<std::pair<Labels, Labels>> streams_;
   std::vector<SummaryLine> summaries_;
   TelemetryCounters c_;
+  // Pusher-thread state, reused across drains so steady-state pushing does not allocate per line.
   SampleJsonWriter writer_{true};
+  std::vector<StreamLines> lines_;  // slot 2*id: kind=sample, 2*id+1: kind=summary
+  std::string body_;
   std::thread thread_;
 };
 

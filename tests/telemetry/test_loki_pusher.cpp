@@ -94,12 +94,26 @@ Sample at(int t_ms, std::uint32_t stream = 0, int flow = 0) {
 TEST(LokiPusher, BodyHasTheExactPushApiShape) {
   StreamLines s;
   s.labels = {{"app", "budgetcc"}, {"kind", "sample"}};
-  s.lines = {{1700000000000000001LL, R"({"a":1})"}, {1700000000000000002LL, "x\"y"}};
-  EXPECT_EQ(buildPushBody({s}),
+  s.add(1700000000000000001LL, R"({"a":1})");
+  s.add(1700000000000000002LL, "x\"y");
+  EXPECT_EQ(s.size(), 2u);
+  EXPECT_EQ(s.line(0), R"({"a":1})");
+  EXPECT_EQ(s.line(1), "x\"y");
+  auto body = [](const std::vector<StreamLines>& v) {
+    std::string out;
+    appendPushBody(out, v);
+    return out;
+  };
+  EXPECT_EQ(body({s}),
             R"({"streams":[{"stream":{"app":"budgetcc","kind":"sample"},"values":[["1700000000000000001","{\"a\":1}"],["1700000000000000002","x\"y"]]}]})");
-  EXPECT_EQ(buildPushBody({}), R"({"streams":[]})");
+  EXPECT_EQ(body({}), R"({"streams":[]})");
   StreamLines empty;
-  EXPECT_EQ(buildPushBody({empty}), R"({"streams":[]})");
+  EXPECT_EQ(body({empty}), R"({"streams":[]})");
+  s.clear();
+  EXPECT_EQ(s.size(), 0u);
+  s.addWith(5, [](std::string& text) { text += "w"; });
+  EXPECT_EQ(s.line(0), "w");
+  EXPECT_EQ(body({s}), R"({"streams":[{"stream":{"app":"budgetcc","kind":"sample"},"values":[["5","w"]]}]})");
 }
 
 TEST(LokiPusher, PushesBatchesWithExactLabelsAndStrictlyIncreasingTimestamps) {

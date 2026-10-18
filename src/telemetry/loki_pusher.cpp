@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <iterator>
 
 #include "core/json.hpp"
 
@@ -16,11 +17,11 @@ std::int64_t defaultBaseNs() {
   return static_cast<std::int64_t>(now) - 60'000'000'000LL;
 }
 
-std::string buildPushBody(const std::vector<StreamLines>& streams) {
-  std::string out = "{\"streams\":[";
+void appendPushBody(std::string& out, const std::vector<StreamLines>& streams) {
+  out += "{\"streams\":[";
   bool first_stream = true;
   for (const auto& s : streams) {
-    if (s.lines.empty()) continue;
+    if (s.size() == 0) continue;
     if (!first_stream) out.push_back(',');
     first_stream = false;
     out += "{\"stream\":{";
@@ -33,18 +34,15 @@ std::string buildPushBody(const std::vector<StreamLines>& streams) {
       appendJsonString(out, kv.second);
     }
     out += "},\"values\":[";
-    for (std::size_t i = 0; i < s.lines.size(); ++i) {
+    for (std::size_t i = 0; i < s.size(); ++i) {
       if (i != 0) out.push_back(',');
-      out += "[\"";
-      out += std::to_string(s.lines[i].first);
-      out += "\",";
-      appendJsonString(out, s.lines[i].second);
+      fmt::format_to(std::back_inserter(out), "[\"{}\",", s.ts[i]);
+      appendJsonString(out, s.line(i));
       out.push_back(']');
     }
     out += "]}";
   }
   out += "]}";
-  return out;
 }
 
 TelemetrySink::TelemetrySink(LokiConfig cfg)
@@ -105,49 +103,41 @@ void TelemetrySink::loop() {
   }
 }
 
+void TelemetrySink::flushBatches(std::size_t& pending) {
+  if (pending == 0) return;
+  pushBatch(lines_, pending);
+  pending = 0;
+  for (auto& sl : lines_) sl.clear();  // keeps the buffers' capacity for the next batch
+}
+
 void TelemetrySink::drain() {
-  std::vector<std::pair<Labels, Labels>> streams;
   std::vector<SummaryLine> summaries;
   {
     std::lock_guard<std::mutex> lk(m_);
-    streams = streams_;
+    for (std::size_t i = lines_.size() / 2; i < streams_.size(); ++i) {
+      lines_.push_back(StreamLines{streams_[i].first, {}, {}, {}});
+      lines_.push_back(StreamLines{streams_[i].second, {}, {}, {}});
+    }
     summaries.swap(summaries_);
   }
-  std::map<std::uint32_t, StreamLines> by_stream;
   std::size_t pending = 0;
-  auto flushBatch = [&] {
-    std::vector<StreamLines> batch;
-    for (auto& kv : by_stream)
-      if (!kv.second.lines.empty()) batch.push_back(std::move(kv.second));
-    by_stream.clear();
-    if (!batch.empty()) pushBatch(batch, pending);
-    pending = 0;
-  };
-  auto lineFor = [&](std::uint32_t stream, bool is_summary) -> StreamLines& {
-    auto it = by_stream.find(stream);
-    if (it == by_stream.end()) {
-      it = by_stream.emplace(stream, StreamLines{}).first;
-      it->second.labels = is_summary ? streams.at(stream).second : streams.at(stream).first;
-    }
-    return it->second;
-  };
-  std::uint64_t formatted_bytes_before = writer_.bytesWritten();
+  const std::uint64_t formatted_before = writer_.bytesWritten();
   Sample s;
   while (ring_.pop(s)) {
-    StreamLines& sl = lineFor(s.stream, false);
-    sl.lines.emplace_back(base_ns_ + static_cast<std::int64_t>(s.t_ms) * 1'000'000 + s.flow, writer_.write(s));
-    if (++pending >= cfg_.batch_lines) flushBatch();
+    lines_.at(2 * static_cast<std::size_t>(s.stream))
+        .addWith(base_ns_ + static_cast<std::int64_t>(s.t_ms) * 1'000'000 + s.flow,
+                 [&](std::string& text) { writer_.append(text, s); });
+    if (++pending >= cfg_.batch_lines) flushBatches(pending);
   }
-  // Summaries live in their own streams (kind=summary); keep them separate from sample batches.
-  flushBatch();
+  // Summaries live in their own streams (kind=summary); keep them out of sample batches.
+  flushBatches(pending);
   for (const auto& sm : summaries) {
-    StreamLines& sl = lineFor(sm.stream, true);
-    sl.lines.emplace_back(base_ns_ + sm.t_ms * 1'000'000, sm.line);
+    lines_.at(2 * static_cast<std::size_t>(sm.stream) + 1).add(base_ns_ + sm.t_ms * 1'000'000, sm.line);
     ++pending;
   }
-  flushBatch();
+  flushBatches(pending);
   std::lock_guard<std::mutex> lk(m_);
-  c_.bytes_written += writer_.bytesWritten() - formatted_bytes_before;
+  c_.bytes_written += writer_.bytesWritten() - formatted_before;
 }
 
 namespace {
@@ -175,14 +165,16 @@ int TelemetrySink::post(const std::string& body) {
   return res ? res->status : -1;
 }
 
-void TelemetrySink::pushBatch(std::vector<StreamLines>& batch, std::size_t lines) {
+void TelemetrySink::pushBatch(const std::vector<StreamLines>& batch, std::size_t lines) {
   if (cfg_.url.empty()) {  // null sink: lines were formatted, nothing leaves the process
     std::lock_guard<std::mutex> lk(m_);
     c_.pushed_lines += lines;
     ++c_.batches;
     return;
   }
-  const std::string body = buildPushBody(batch);
+  body_.clear();
+  appendPushBody(body_, batch);
+  const std::string& body = body_;
   const auto t0 = std::chrono::steady_clock::now();
   bool ok = false;
   int backoff = cfg_.backoff_ms;

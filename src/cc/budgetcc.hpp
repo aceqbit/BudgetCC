@@ -27,8 +27,9 @@ class BudgetCc final : public CongestionControl {
   double capacityEstimateBps() const { return c_hat_; }
 
  private:
-  static constexpr double kSaturationFraction = 0.1;  // queue above this share of Q* means the link is the limit
+  static constexpr double kSaturationFraction = 0.5;  // queue above this share of Q* means the link is the limit
   static constexpr double kCollapseMinPackets = 4.0;
+  static constexpr double kSampleMinPackets = 4.0;
   double owdMinMs() const;
 
   double budget_ms_;

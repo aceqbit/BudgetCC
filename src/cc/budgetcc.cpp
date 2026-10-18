@@ -56,7 +56,10 @@ void BudgetCc::onTimer(Time now) {
   if (!have_owd_) return;  // nothing measured yet: keep the start rate
   const double q = queueDelayEstimateMs();
   const double qstar = qstarMs();
-  const Duration srtt = std::clamp<Duration>(srtt_, fromMs(20), fromMs(200));
+  // The capacity sample spans about one RTT, stretched at low rates so that it always covers enough whole
+  // packets to be a rate and not a count of 0, 1 or 2 packets.
+  const Duration min_span = static_cast<Duration>(kSampleMinPackets * kWireBytes * 8.0 / c_hat_ * 1e9);
+  const Duration srtt = std::clamp<Duration>(std::max(srtt_, min_span), fromMs(20), fromMs(500));
   // Delivery is measured on the receive timeline, which reaches the sender one feedback lag late: anchor the
   // window at the newest receive time, but never earlier than "now minus the lag" so an outage shows up.
   const Duration lag =

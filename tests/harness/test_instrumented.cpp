@@ -44,6 +44,10 @@ struct Mock {
     th = std::thread([this] { svr.listen_after_bind(); });
     svr.wait_until_ready();
   }
+  std::vector<std::string> snapshot() {
+    std::lock_guard<std::mutex> lk(m);
+    return bodies;
+  }
   ~Mock() {
     svr.stop();
     th.join();
@@ -67,7 +71,8 @@ TEST(Instrumented, TelemetryOnAndOffGiveIdenticalSummaries) {
   const std::string with = runResultToJson(runInstrumented(c, const12(), &sink, nullptr));
   const std::string without = runResultToJson(runOnce(c, const12()));
   EXPECT_EQ(with, without);
-  EXPECT_EQ(sink.counters().pushed_lines, 999u + 1u);  // 99 ticks per second x 10 s ... plus one summary
+  sink.flush();
+  EXPECT_EQ(sink.counters().pushed_lines, 999u + 1u);  // one sample per 10 ms tick below 10 s, plus the summary
 }
 
 TEST(Instrumented, SamplesAndSummaryReachLokiWithTheRunLabels) {
@@ -86,8 +91,9 @@ TEST(Instrumented, SamplesAndSummaryReachLokiWithTheRunLabels) {
     EXPECT_EQ(sink.counters().push_failures, 0u);
   }
   std::string all;
-  for (const auto& b : mock.bodies) all += b;
-  EXPECT_EQ(count(all, "\"kind\":\"sample\""), mock.bodies.size() - 1);  // one body per sample batch + one summary
+  const auto bodies = mock.snapshot();
+  for (const auto& b : bodies) all += b;
+  EXPECT_EQ(count(all, "\"kind\":\"sample\""), bodies.size() - 1);  // one body per sample batch + one summary
   EXPECT_EQ(count(all, "\"kind\":\"summary\""), 1u);
   EXPECT_NE(all.find("\"phase\":\"p2\""), std::string::npos);
   EXPECT_NE(all.find("\"algo\":\"reno\""), std::string::npos);

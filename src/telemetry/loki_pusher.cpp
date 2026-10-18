@@ -93,10 +93,11 @@ void TelemetrySink::loop() {
   for (;;) {
     cv_.wait_for(lk, std::chrono::milliseconds(cfg_.flush_interval_ms), [this] { return stop_ || flush_requested_; });
     const bool stopping = stop_;
+    const bool flushing = flush_requested_;  // only a drain that started after the request may satisfy it
     lk.unlock();
     drain();
     lk.lock();
-    if (flush_requested_) {
+    if (flushing) {
       flush_requested_ = false;
       flushed_.notify_all();
     }

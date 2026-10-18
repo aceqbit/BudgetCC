@@ -17,15 +17,15 @@ struct MockLoki {
   int port = 0;
   std::mutex m;
   std::vector<std::string> bodies;
-  int fail_first = 0;
-  int fail_status = 429;
-  int requests = 0;
+  std::atomic<int> fail_first{0};
+  std::atomic<int> fail_status{429};
+  std::atomic<int> requests{0};
 
   MockLoki() {
     svr.Post("/loki/api/v1/push", [this](const httplib::Request& req, httplib::Response& res) {
       std::lock_guard<std::mutex> lk(m);
-      ++requests;
-      if (requests <= fail_first) {
+      const int n = ++requests;
+      if (n <= fail_first) {
         res.status = fail_status;
         return;
       }
@@ -36,6 +36,10 @@ struct MockLoki {
     port = svr.bind_to_any_port("127.0.0.1");
     th = std::thread([this] { svr.listen_after_bind(); });
     svr.wait_until_ready();
+  }
+  std::vector<std::string> snapshot() {
+    std::lock_guard<std::mutex> lk(m);
+    return bodies;
   }
   ~MockLoki() {
     svr.stop();
@@ -113,7 +117,7 @@ TEST(LokiPusher, PushesBatchesWithExactLabelsAndStrictlyIncreasingTimestamps) {
   }
   std::vector<std::int64_t> sample_ts;
   std::size_t summary_bodies = 0;
-  for (const auto& b : mock.bodies) {
+  for (const auto& b : mock.snapshot()) {
     const auto ts = timestamps(b);
     EXPECT_GE(ts.size(), 1u);
     EXPECT_LE(ts.size(), 1000u);  // batch limit
@@ -146,7 +150,7 @@ TEST(LokiPusher, TwoFlowsAtTheSameTickKeepTimestampsStrictlyIncreasing) {
     sink.flush();
   }
   std::vector<std::int64_t> ts;
-  for (const auto& b : mock.bodies) {
+  for (const auto& b : mock.snapshot()) {
     const auto v = timestamps(b);
     ts.insert(ts.end(), v.begin(), v.end());
   }
@@ -167,7 +171,7 @@ TEST(LokiPusher, RetriesWithBackoffOn429And5xx) {
     EXPECT_EQ(c.pushed_lines, 10u) << status;
     EXPECT_EQ(c.push_failures, 0u) << status;
     EXPECT_EQ(mock.requests, 3) << status;  // two rejected attempts, then success
-    EXPECT_EQ(mock.bodies.size(), 1u);
+    EXPECT_EQ(mock.snapshot().size(), 1u);
   }
 }
 
@@ -235,7 +239,7 @@ TEST(LokiPusher, DestructorFlushesPendingLines) {
     for (int t = 1; t <= 50; ++t) sink.sample(at(t, id));
   }
   std::size_t lines = 0;
-  for (const auto& b : mock.bodies) lines += timestamps(b).size();
+  for (const auto& b : mock.snapshot()) lines += timestamps(b).size();
   EXPECT_EQ(lines, 50u);
 }
 

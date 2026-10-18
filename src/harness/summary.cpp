@@ -106,7 +106,9 @@ Summary computeSummary(const SummaryInput& in) {
   }
   if (in.q_ms != nullptr) s.recovery = recoveryStats(*in.trace, *in.q_ms, in.duration, in.qstar_ms);
   if (in.flow_bytes.size() >= 2) {
-    std::vector<double> x(in.flow_bytes.begin(), in.flow_bytes.end());
+    std::vector<double> x;
+    x.reserve(in.flow_bytes.size());
+    for (const auto b : in.flow_bytes) x.push_back(static_cast<double>(b));
     s.jain = jainIndex(x);
   }
   return s;

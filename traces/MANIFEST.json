@@ -1,0 +1,49 @@
+{
+  "repo": "ravinet/mahimahi",
+  "commit": "f1346c38c415abfc98626dd82450f49a57033603",
+  "license": "GPL-3.0 (not vendored)",
+  "files": [
+    {
+      "id": "att_lte_driving",
+      "repo_file": "ATT-LTE-driving.down",
+      "url": "https://raw.githubusercontent.com/ravinet/mahimahi/f1346c38c415abfc98626dd82450f49a57033603/traces/ATT-LTE-driving.down",
+      "bytes": 2306644,
+      "sha256": "73c58f41bf7a3f0fac82810ca61307521be1cf6b77a0e98093fd340bddfd161f"
+    },
+    {
+      "id": "att_lte_driving_2016",
+      "repo_file": "ATT-LTE-driving-2016.down",
+      "url": "https://raw.githubusercontent.com/ravinet/mahimahi/f1346c38c415abfc98626dd82450f49a57033603/traces/ATT-LTE-driving-2016.down",
+      "bytes": 271440,
+      "sha256": "24a40538340de991e0a6595aefc381b11a3da0446176e69b51750707a57b0344"
+    },
+    {
+      "id": "tmobile_lte_driving",
+      "repo_file": "TMobile-LTE-driving.down",
+      "url": "https://raw.githubusercontent.com/ravinet/mahimahi/f1346c38c415abfc98626dd82450f49a57033603/traces/TMobile-LTE-driving.down",
+      "bytes": 3443315,
+      "sha256": "d48ff134fc29c36cc3c3dee203464246bd698f0faede42534a27b0cbe3057055"
+    },
+    {
+      "id": "verizon_lte_driving",
+      "repo_file": "Verizon-LTE-driving.down",
+      "url": "https://raw.githubusercontent.com/ravinet/mahimahi/f1346c38c415abfc98626dd82450f49a57033603/traces/Verizon-LTE-driving.down",
+      "bytes": 7844811,
+      "sha256": "79f1860b7b195496d7d388d090edb3eaa9cecbbdfb489bf4a5a73d95d8c2e7ce"
+    },
+    {
+      "id": "tmobile_lte_short",
+      "repo_file": "TMobile-LTE-short.down",
+      "url": "https://raw.githubusercontent.com/ravinet/mahimahi/f1346c38c415abfc98626dd82450f49a57033603/traces/TMobile-LTE-short.down",
+      "bytes": 1211415,
+      "sha256": "4f33dce8dd811b5702272af64aaf64d3913719919abd776edf1e0f7c0965da43"
+    },
+    {
+      "id": "verizon_lte_short",
+      "repo_file": "Verizon-LTE-short.down",
+      "url": "https://raw.githubusercontent.com/ravinet/mahimahi/f1346c38c415abfc98626dd82450f49a57033603/traces/Verizon-LTE-short.down",
+      "bytes": 365580,
+      "sha256": "c918436fbd6246af134c76585d9395881fdd27203c59a8902b9a7c675b8a8e3e"
+    }
+  ]
+}

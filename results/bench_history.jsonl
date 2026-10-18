@@ -6,3 +6,5 @@
 {"git_sha":"74eb9c62933b","change":"E4","events_per_s":3106637.12823288,"events_per_s_no_telemetry":4619992.1198454145,"cpu_per_ack_ns":34.4885,"allocs_per_pkt":0}
 {"git_sha":"b264bf3c912e","change":"E7","events_per_s":2994167.646875059,"events_per_s_no_telemetry":5450090.735127598,"cpu_per_ack_ns":36.1895,"allocs_per_pkt":0}
 {"git_sha":"296e5d1b3ec9","change":"E6","events_per_s":4705794.453173031,"events_per_s_no_telemetry":6700772.083409326,"cpu_per_ack_ns":47.261,"allocs_per_pkt":0}
+{"git_sha":"v0.1-baseline","change":"AB-p1","events_per_s":1805773.7708087245,"events_per_s_no_telemetry":2166467.8167855507,"cpu_per_ack_ns":104.439,"allocs_per_pkt":4.94541231126597,"matrix_runtime_s":100.6680214}
+{"git_sha":"172ad0c9c7e0","change":"AB-p2","events_per_s":2785200.7301536053,"events_per_s_no_telemetry":3888205.1104254066,"cpu_per_ack_ns":68.218,"allocs_per_pkt":0,"matrix_runtime_s":0.2719746}

@@ -85,6 +85,7 @@ struct MatrixCliOptions {
   std::vector<std::string> traces;
   std::string mode;
   std::uint32_t buffer = 0;
+  std::size_t jobs = 1;
 };
 
 int doMatrix(const MatrixCliOptions& o, std::ostream& err) {
@@ -96,12 +97,12 @@ int doMatrix(const MatrixCliOptions& o, std::ostream& err) {
   mo.traces = o.traces;
   mo.mode = o.mode;
   mo.buffer = o.buffer;
-  std::unique_ptr<TelemetrySink> loki;
+  if (o.jobs < 1) throw std::invalid_argument("--jobs must be at least 1");
+  mo.jobs = o.jobs;
   if (!o.loki_url.empty()) {
     LokiConfig lc;
     lc.url = o.loki_url;
-    loki = std::make_unique<TelemetrySink>(lc);
-    mo.loki = loki.get();
+    mo.loki = lc;
   }
   std::size_t done = 0;
   mo.on_done = [&](const RunConfig& c, const RunResult&) {
@@ -115,7 +116,7 @@ int doMatrix(const MatrixCliOptions& o, std::ostream& err) {
   std::ofstream f(o.out_file, std::ios::binary);
   if (!f) throw std::runtime_error("cannot write " + o.out_file);
   f << json << "\n";
-  if (loki && loki->counters().push_failures > 0) throw std::runtime_error("Loki push failed");
+  if (m.push_failures > 0) throw std::runtime_error("Loki push failed");
   err << m.runs.size() << " runs in " << m.runtime_s << " s -> " << o.out_file << "\n";
   return 0;
 }
@@ -151,6 +152,7 @@ int runMain(const std::vector<std::string>& args, std::ostream& out, std::ostrea
   matrix->add_option("--trace", mx.traces, "only runs on this trace; repeatable");
   matrix->add_option("--mode", mx.mode, "only runs of this mode (bulk|video|fairness)");
   matrix->add_option("--buffer", mx.buffer, "only runs with this buffer size in packets");
+  matrix->add_option("--jobs", mx.jobs, "runs executed concurrently (results do not depend on it)");
   matrix->add_option("--limit", mx.limit, "only the first N runs (smoke tests)");
 
   try {

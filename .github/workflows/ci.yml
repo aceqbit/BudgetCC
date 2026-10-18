@@ -26,11 +26,7 @@ jobs:
           path: ~\AppData\Local\vcpkg\archives
           key: vcpkg-win-${{ hashFiles('vcpkg.json') }}
       - name: vcpkg
-        shell: pwsh
-        run: |
-          git clone https://github.com/microsoft/vcpkg $env:VCPKG_ROOT
-          git -C $env:VCPKG_ROOT checkout bf19794383e8fb95eba5aa553235bc8ec2271688
-          & "$env:VCPKG_ROOT/bootstrap-vcpkg.bat" -disableMetrics
+        run: python tools/ci_vcpkg.py
       - run: python tools/check.py --preset windows-msvc --cmake-arg=-DCMAKE_BUILD_TYPE=${{ matrix.config }}
 
   ubuntu:
@@ -57,7 +53,7 @@ jobs:
           path: ~/.cache/vcpkg/archives
           key: vcpkg-linux-${{ hashFiles('vcpkg.json') }}
       - name: vcpkg
-        run: git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT" && git -C "$VCPKG_ROOT" checkout bf19794383e8fb95eba5aa553235bc8ec2271688 && "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+        run: python tools/ci_vcpkg.py
       - run: python tools/check.py --preset ${{ matrix.preset }}
 
   coverage:

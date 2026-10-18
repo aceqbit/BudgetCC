@@ -1,6 +1,10 @@
-#include <fmt/core.h>
+#include <iostream>
+#include <string>
+#include <vector>
 
-int main() {
-  fmt::print("budgetcc\n");
-  return 0;
+#include "harness/cli.hpp"
+
+int main(int argc, char** argv) {
+  std::vector<std::string> args(argv, argv + argc);
+  return bcc::runMain(args, std::cout, std::cerr);
 }

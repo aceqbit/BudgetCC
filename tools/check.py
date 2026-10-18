@@ -7,6 +7,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from ci_util import run_logged  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -18,11 +21,10 @@ def default_preset() -> str:
     return "linux-gcc"
 
 
-def run(cmd, **kw):
-    print("+", " ".join(map(str, cmd)), flush=True)
-    r = subprocess.run(cmd, cwd=ROOT, **kw)
-    if r.returncode != 0:
-        sys.exit(r.returncode)
+def run(cmd):
+    rc = run_logged(cmd, f"check.py: {Path(str(cmd[0])).name} {cmd[1] if len(cmd) > 1 else ''} failed", cwd=ROOT)
+    if rc != 0:
+        sys.exit(rc)
 
 
 def main() -> None:

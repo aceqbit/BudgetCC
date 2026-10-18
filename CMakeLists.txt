@@ -74,9 +74,17 @@ if(WIN32)
   target_link_libraries(bcc_options INTERFACE ws2_32)
 endif()
 target_include_directories(bcc_options INTERFACE ${CMAKE_SOURCE_DIR}/src)
+string(TOUPPER "${CMAKE_BUILD_TYPE}" _bcc_bt)
+set(BUDGETCC_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${_bcc_bt}}")
+if(BUDGETCC_LTO)
+  string(APPEND BUDGETCC_FLAGS " LTO")
+endif()
+string(STRIP "${BUDGETCC_FLAGS}" BUDGETCC_FLAGS)
 target_compile_definitions(bcc_options INTERFACE
   BUDGETCC_BUILD_TYPE="$<CONFIG>"
-  BUDGETCC_GIT_SHA="${BUDGETCC_GIT_SHA}")
+  BUDGETCC_GIT_SHA="${BUDGETCC_GIT_SHA}"
+  BUDGETCC_FLAGS="${BUDGETCC_FLAGS}"
+  BUDGETCC_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 
 # --------------------------------------------------------- module libraries
 function(bcc_module name)
@@ -95,7 +103,7 @@ bcc_module(link bcc_core)
 bcc_module(cc bcc_core)
 bcc_module(transport bcc_core bcc_cc bcc_link)
 bcc_module(telemetry bcc_core fmt::fmt httplib::httplib)
-bcc_module(harness bcc_core bcc_link bcc_cc bcc_transport bcc_telemetry)
+bcc_module(harness bcc_core bcc_link bcc_cc bcc_transport bcc_telemetry CLI11::CLI11)
 
 set(BCC_ALL bcc_harness bcc_telemetry bcc_transport bcc_cc bcc_link bcc_core)
 
@@ -116,8 +124,6 @@ if(TEST_SRCS)
   add_executable(budgetcc_tests ${TEST_SRCS})
   target_include_directories(budgetcc_tests PRIVATE ${CMAKE_SOURCE_DIR}/tests ${CMAKE_SOURCE_DIR})
   target_link_libraries(budgetcc_tests PRIVATE ${BCC_ALL} GTest::gtest GTest::gtest_main)
-  target_compile_definitions(budgetcc_tests PRIVATE
-    BUDGETCC_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
   include(GoogleTest)
   gtest_discover_tests(budgetcc_tests DISCOVERY_TIMEOUT 60 PROPERTIES TIMEOUT 120)
 endif()

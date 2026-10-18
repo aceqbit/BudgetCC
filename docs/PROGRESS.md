@@ -12,3 +12,4 @@ Start: 2026-10-18T08:40:29Z (UTC)
 - G4 fixes: flush() raced the drain loop (now only a drain started after the request clears it); MSVC C4244 in summary.cpp; Loki mocks made race-free. A TSan segfault in LokiPusher tests appeared once and did not reproduce on rerun (cause unknown, watching).
 - G5: Phase 1 matrix 250/250 runs (results/phase1.json, git f110d12, matrix 5637 s serial), bench_p1.json, README block generated; tag v0.1-baseline. CI status unverifiable locally (gh not authenticed).
 - Plan cut (user request, speed): no retroactive per-step A/B builds; one interleaved P1-vs-P2 A/B session at the end; A4 cut.
+- Plan trimmed (user): speed mode in CLAUDE.md section 1; cuts: A4, dashboard v2, per-step benches, fresh-clone reproduce.

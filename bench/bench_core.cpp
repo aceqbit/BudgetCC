@@ -132,19 +132,19 @@ JsonObject entry(const BenchResult& r, double matrix_runtime_s) {
 }
 }  // namespace
 
-std::string benchJson(const std::string& phase, const BenchResult& r, double matrix_runtime_s) {
+std::string benchJson(const std::string& phase, const BenchResult& r, double matrix_runtime_s, const std::string& sha) {
   JsonObject o;
   o.i64("schema", 1)
       .str("phase", phase)
-      .str("git_sha", BUDGETCC_GIT_SHA)
+      .str("git_sha", sha.empty() ? BUDGETCC_GIT_SHA : sha)
       .raw("env", environmentJson())
       .raw("bench", entry(r, matrix_runtime_s).finish());
   return o.finish();
 }
 
-std::string historyLine(const std::string& change, const BenchResult& r, double matrix_runtime_s) {
+std::string historyLine(const std::string& change, const BenchResult& r, double matrix_runtime_s, const std::string& sha) {
   JsonObject o;
-  o.str("git_sha", BUDGETCC_GIT_SHA)
+  o.str("git_sha", sha.empty() ? BUDGETCC_GIT_SHA : sha)
       .str("change", change)
       .num("events_per_s", r.events_per_s)
       .num("events_per_s_no_telemetry", r.events_per_s_no_telemetry)

@@ -64,3 +64,9 @@ TEST(Bench, HistoryLineOmitsMatrixRuntimeWhenNoMatrixWasTimed) {
   EXPECT_NE(h.find("\"events_per_s\":1.5"), std::string::npos);
   EXPECT_NE(historyLine("E1", r, 3.0).find("\"matrix_runtime_s\":3"), std::string::npos);
 }
+
+TEST(Bench, ExplicitShaOverridesTheCompiledOne) {
+  BenchResult r;
+  EXPECT_NE(historyLine("E1", r, 0.0, "abc123").find("\"git_sha\":\"abc123\""), std::string::npos);
+  EXPECT_NE(benchJson("p2", r, 0.0, "abc123").find("\"git_sha\":\"abc123\""), std::string::npos);
+}

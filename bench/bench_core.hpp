@@ -34,8 +34,9 @@ double measureAllocsPerPacket(const BenchOptions& o);
 BenchResult runBench(const BenchOptions& o);
 
 // {"schema":1,"phase":..,"git_sha":..,"env":{..},"bench":{events_per_s,..,matrix_runtime_s}}
-std::string benchJson(const std::string& phase, const BenchResult& r, double matrix_runtime_s);
+// sha empty: the sha the binary was configured with.
+std::string benchJson(const std::string& phase, const BenchResult& r, double matrix_runtime_s, const std::string& sha = "");
 // One bench_history.jsonl line: {"git_sha":..,"change":..,"events_per_s":..,"cpu_per_ack_ns":..,...}
-std::string historyLine(const std::string& change, const BenchResult& r, double matrix_runtime_s);
+std::string historyLine(const std::string& change, const BenchResult& r, double matrix_runtime_s, const std::string& sha = "");
 
 }  // namespace bcc

@@ -91,3 +91,15 @@ TEST(EventQueue, EventIsPlainOldData) {
   EXPECT_TRUE(std::is_trivially_copyable<Event>::value);
   EXPECT_LE(sizeof(Event), 64u);
 }
+
+TEST(EventQueue, SlotsAreRecycledSoStorageStaysBounded) {
+  EventQueue q;
+  int hits = 0;
+  for (int round = 0; round < 1000; ++round) {
+    for (int i = 0; i < 50; ++i) q.push(round * 100 + i, [&hits] { ++hits; });
+    for (int i = 0; i < 50; ++i) q.pop().run();
+  }
+  EXPECT_EQ(hits, 50'000);
+  EXPECT_TRUE(q.empty());
+  EXPECT_EQ(q.eventsProcessed(), 50'000u);
+}

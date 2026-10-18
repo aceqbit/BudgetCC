@@ -1,0 +1,98 @@
+name: ci
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+env:
+  VCPKG_ROOT: ${{ github.workspace }}/vcpkg-root
+  BCC_USE_VCPKG: "1"
+
+jobs:
+  windows-msvc:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        config: [Release, Debug]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: python -m pip install pytest ninja
+      - uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\vcpkg\archives
+          key: vcpkg-win-${{ hashFiles('vcpkg.json') }}
+      - name: vcpkg
+        shell: bash
+        run: git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT" && git -C "$VCPKG_ROOT" checkout bf19794383e8fb95eba5aa553235bc8ec2271688 && "$VCPKG_ROOT/bootstrap-vcpkg.bat" -disableMetrics
+      - run: python tools/check.py --preset windows-msvc --cmake-arg=-DCMAKE_BUILD_TYPE=${{ matrix.config }}
+
+  ubuntu:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: gcc, preset: linux-gcc }
+          - { name: clang, preset: linux-clang }
+          - { name: asan-ubsan, preset: asan-ubsan }
+          - { name: tsan, preset: tsan }
+    name: ubuntu-${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: python -m pip install pytest
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build clang
+      - run: sudo sysctl vm.mmap_rnd_bits=28
+        if: matrix.name == 'tsan'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/vcpkg/archives
+          key: vcpkg-linux-${{ hashFiles('vcpkg.json') }}
+      - name: vcpkg
+        run: git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT" && git -C "$VCPKG_ROOT" checkout bf19794383e8fb95eba5aa553235bc8ec2271688 && "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+      - run: python tools/check.py --preset ${{ matrix.preset }}
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: python -m pip install pytest gcovr
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - run: |
+          cmake --preset linux-gcc -DBUDGETCC_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug
+          cmake --build --preset linux-gcc
+          ctest --preset linux-gcc
+          gcovr -r . --filter 'src/' --exclude 'src/main.cpp' --exclude 'src/harness/cli.*' --fail-under-line 80 --txt
+
+  tidy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build clang-tidy
+      - run: |
+          cmake --preset linux-gcc -DBUDGETCC_WERROR=OFF
+          run-clang-tidy -p build/linux-gcc -quiet "src/.*\.cpp"
+
+  loki-smoke:
+    runs-on: ubuntu-latest
+    needs: ubuntu
+    services:
+      loki:
+        image: grafana/loki:3.2.1
+        ports: ['3100:3100']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - run: |
+          cmake --preset linux-gcc
+          cmake --build --preset linux-gcc --target budgetcc
+      - run: python tools/smoke_loki.py --url http://localhost:3100 --exe build/linux-gcc/budgetcc

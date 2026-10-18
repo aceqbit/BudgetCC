@@ -1,0 +1,16 @@
+build/
+out/
+.vs/
+.vscode/
+*.user
+__pycache__/
+.pytest_cache/
+*.pyc
+traces/real/
+traces/synthetic/
+results/csv/
+deploy/data/
+*.gcda
+*.gcno
+coverage/
+.claude/

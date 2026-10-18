@@ -6,7 +6,7 @@ on:
   pull_request:
 
 env:
-  VCPKG_ROOT: ${{ github.workspace }}/vcpkg-root
+  BCC_VCPKG_ROOT: ${{ github.workspace }}/vcpkg-root
   BCC_USE_VCPKG: "1"
 
 jobs:

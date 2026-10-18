@@ -2,6 +2,7 @@
 
 #include <chrono>
 
+#include "harness/instrumented.hpp"
 #include "link/trace_loader.hpp"
 
 namespace bcc {
@@ -16,7 +17,7 @@ MatrixResult runMatrix(const MatrixOptions& opt) {
     if (opt.duration != 0) cfg.duration = opt.duration;
     auto it = traces.find(cfg.trace);
     if (it == traces.end()) it = traces.emplace(cfg.trace, Trace::load(resolveTracePath(cfg.trace))).first;
-    out.runs.push_back(runOnce(cfg, it->second));
+    out.runs.push_back(runInstrumented(cfg, it->second, opt.loki, nullptr));
     if (opt.on_done) opt.on_done(cfg, out.runs.back());
   }
   out.runtime_s = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();

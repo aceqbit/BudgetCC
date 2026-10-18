@@ -103,6 +103,17 @@ std::vector<RunConfig> expandMatrix(const std::string& phase) {
   return runs;
 }
 
+std::map<std::string, std::string> lokiLabels(const RunConfig& c, const std::string& kind) {
+  return {{"app", "budgetcc"},
+          {"kind", kind},
+          {"algo", c.algoLabel()},
+          {"trace", c.trace},
+          {"phase", c.phase},
+          {"buffer", std::to_string(c.buffer_pkts)},
+          {"budget", c.budgetLabel()},
+          {"mode", c.mode}};
+}
+
 std::string resolveTracePath(const std::string& name_or_path) {
   namespace fs = std::filesystem;
   std::vector<fs::path> tried;

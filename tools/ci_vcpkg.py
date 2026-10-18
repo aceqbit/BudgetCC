@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def main() -> int:
-    dest = os.environ["VCPKG_ROOT"]
+    dest = os.environ["BCC_VCPKG_ROOT"]
     baseline = json.loads((ROOT / "vcpkg.json").read_text())["builtin-baseline"]
     steps = [
         (["git", "clone", "https://github.com/microsoft/vcpkg", dest], None),

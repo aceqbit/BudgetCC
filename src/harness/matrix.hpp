@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "harness/runner.hpp"
+#include "telemetry/loki_pusher.hpp"
 
 namespace bcc {
 
@@ -13,6 +14,7 @@ struct MatrixOptions {
   std::string phase = "p1";
   Duration duration = 0;   // 0: keep the 60 s of each run
   std::size_t limit = 0;   // 0: all 250 runs; otherwise only the first N (smoke tests)
+  TelemetrySink* loki = nullptr;  // optional: samples and one summary line per run
   // Called after each finished run (serial, in run order).
   std::function<void(const RunConfig&, const RunResult&)> on_done;
 };

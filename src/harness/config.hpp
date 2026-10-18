@@ -44,6 +44,9 @@ std::vector<std::string> allTraceNames();  // 6 real + 4 synthetic
 // 250 runs: 80 baselines + 60 BudgetCC budget sweep + 50 video + 60 fairness (CLAUDE.md decisions 6-7).
 std::vector<RunConfig> expandMatrix(const std::string& phase);
 
+// Loki stream labels (CLAUDE.md decision 11): app, kind, algo, trace, phase, buffer, budget, mode.
+std::map<std::string, std::string> lokiLabels(const RunConfig& c, const std::string& kind);
+
 // Finds a trace by path, or by name under <traces>/synthetic and <traces>/real.
 std::string resolveTracePath(const std::string& name_or_path);
 

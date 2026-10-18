@@ -34,7 +34,7 @@ def main() -> None:
     ap.add_argument("--cmake-arg", action="append", default=[])
     a = ap.parse_args()
 
-    toolchain = os.environ.get("VCPKG_ROOT")
+    toolchain = os.environ.get("BCC_VCPKG_ROOT")
     extra = list(a.cmake_arg)
     if toolchain and os.environ.get("BCC_USE_VCPKG"):
         extra.append(f"-DCMAKE_TOOLCHAIN_FILE={Path(toolchain) / 'scripts/buildsystems/vcpkg.cmake'}")

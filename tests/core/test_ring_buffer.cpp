@@ -17,7 +17,7 @@ struct RingTraits<MutexRing<std::uint64_t>> {
 template <class R>
 class RingTest : public ::testing::Test {};
 using RingTypes = ::testing::Types<MutexRing<std::uint64_t>>;
-TYPED_TEST_SUITE(RingTest, RingTypes);
+TYPED_TEST_SUITE(RingTest, RingTypes, ::testing::internal::DefaultNameGenerator);
 
 TYPED_TEST(RingTest, FifoWrapAroundFullEmpty) {
   TypeParam r(4);

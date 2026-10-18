@@ -9,6 +9,7 @@
 #include <stdexcept>
 
 #include "harness/config.hpp"
+#include "harness/instrumented.hpp"
 #include "harness/matrix.hpp"
 #include "harness/results.hpp"
 #include "harness/runner.hpp"
@@ -56,9 +57,13 @@ int doRun(RunOptions& o, std::ostream& out) {
                                         std::to_string(o.cfg.buffer_pkts) + ".csv"))
                                           .string());
   }
-  const RunResult r = runOnce(o.cfg, trace, 0, [&csv](const Sample& smp) {
-    if (csv) csv->write(smp);
-  });
+  std::unique_ptr<TelemetrySink> loki;
+  if (!o.cfg.loki_url.empty()) {
+    LokiConfig lc;
+    lc.url = o.cfg.loki_url;
+    loki = std::make_unique<TelemetrySink>(lc);
+  }
+  const RunResult r = runInstrumented(o.cfg, trace, loki.get(), csv.get());
   const std::string json = runResultToJson(r);
   out << json << "\n";
   if (!o.out_file.empty()) {
@@ -66,6 +71,8 @@ int doRun(RunOptions& o, std::ostream& out) {
     if (!f) throw std::runtime_error("cannot write " + o.out_file);
     f << json << "\n";
   }
+  if (loki && loki->counters().push_failures > 0)
+    throw std::runtime_error("Loki push failed; is " + o.cfg.loki_url + " reachable?");
   return 0;
 }
 
@@ -74,6 +81,7 @@ struct MatrixCliOptions {
   std::string out_file;
   double duration_s = 0.0;
   std::size_t limit = 0;
+  std::string loki_url;
 };
 
 int doMatrix(const MatrixCliOptions& o, std::ostream& err) {
@@ -82,6 +90,13 @@ int doMatrix(const MatrixCliOptions& o, std::ostream& err) {
   mo.phase = o.phase;
   mo.duration = static_cast<Duration>(o.duration_s * 1e9);
   mo.limit = o.limit;
+  std::unique_ptr<TelemetrySink> loki;
+  if (!o.loki_url.empty()) {
+    LokiConfig lc;
+    lc.url = o.loki_url;
+    loki = std::make_unique<TelemetrySink>(lc);
+    mo.loki = loki.get();
+  }
   std::size_t done = 0;
   mo.on_done = [&](const RunConfig& c, const RunResult&) {
     err << "[" << ++done << "] " << c.runId() << " " << c.algoLabel() << " " << c.trace << " buffer=" << c.buffer_pkts
@@ -94,6 +109,7 @@ int doMatrix(const MatrixCliOptions& o, std::ostream& err) {
   std::ofstream f(o.out_file, std::ios::binary);
   if (!f) throw std::runtime_error("cannot write " + o.out_file);
   f << json << "\n";
+  if (loki && loki->counters().push_failures > 0) throw std::runtime_error("Loki push failed");
   err << m.runs.size() << " runs in " << m.runtime_s << " s -> " << o.out_file << "\n";
   return 0;
 }
@@ -115,6 +131,7 @@ int runMain(const std::vector<std::string>& args, std::ostream& out, std::ostrea
   run->add_option("--duration-s", ro.duration_s, "simulated seconds");
   run->add_option("--seed", ro.cfg.seed, "seed for flow start jitter");
   run->add_option("--phase", ro.cfg.phase, "p1|p2 (label only)");
+  run->add_option("--loki", ro.cfg.loki_url, "push samples and the summary to this Loki base URL");
   run->add_option("--csv", ro.cfg.csv_dir, "write the 10 ms samples to a CSV file in this directory");
   run->add_option("--out", ro.out_file, "also write the JSON to this file");
   run->add_option("--cc-param", ro.cc_params, "controller override key=value; repeatable");
@@ -123,6 +140,7 @@ int runMain(const std::vector<std::string>& args, std::ostream& out, std::ostrea
   CLI::App* matrix = app.add_subcommand("matrix", "run the full 250-run experiment matrix");
   matrix->add_option("--phase", mx.phase, "p1|p2")->required();
   matrix->add_option("--out", mx.out_file, "results JSON file")->required();
+  matrix->add_option("--loki", mx.loki_url, "push samples and summaries to this Loki base URL");
   matrix->add_option("--duration-s", mx.duration_s, "override the 60 s run length (smoke tests)");
   matrix->add_option("--limit", mx.limit, "only the first N runs (smoke tests)");
 

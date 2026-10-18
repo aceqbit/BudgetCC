@@ -27,9 +27,29 @@ void Receiver::onPacket(Packet* p) {
   ++interval_.pkts;
   interval_.owd_ms_sum += toMs(owd);
   pool_.free(p);
-  // PHASE1-NAIVE(A3): one feedback event (a heap-allocated std::function) per packet.
-  const FeedbackItem fb{seq, now};
-  sim_.scheduleIn(return_delay_, [this, fb] { to_sender_(fb); });
+  items_.push(FeedbackItem{seq, now});
+  ++unflushed_;
+  if (!flush_armed_) {
+    flush_armed_ = true;
+    sim_.schedule((now / kFeedbackInterval + 1) * kFeedbackInterval, [this] { flush(); });
+  }
+}
+
+void Receiver::flush() {
+  flush_armed_ = false;
+  batches_.push(static_cast<std::uint32_t>(unflushed_));
+  unflushed_ = 0;
+  sim_.scheduleIn(return_delay_, [this] { deliver(); });
+}
+
+void Receiver::deliver() {
+  const std::uint32_t n = batches_.front();
+  batches_.pop();
+  for (std::uint32_t i = 0; i < n; ++i) {
+    const FeedbackItem fb = items_.front();
+    items_.pop();
+    to_sender_(fb);
+  }
 }
 
 ReceiverInterval Receiver::takeInterval() {

@@ -3,6 +3,7 @@
 #include <functional>
 #include <vector>
 
+#include "core/fifo.hpp"
 #include "core/packet_pool.hpp"
 #include "core/simulator.hpp"
 #include "transport/feedback.hpp"
@@ -27,8 +28,11 @@ struct ReceiverInterval {
   double owd_ms_sum = 0.0;
 };
 
+// Feedback is batched (A3): packets received since the last 10 ms boundary travel back together and reach the
+// sender return_delay after that boundary, each item carrying its own receive timestamp.
 class Receiver {
  public:
+  static constexpr Duration kFeedbackInterval = 10'000'000;
   using FeedbackFn = std::function<void(const FeedbackItem&)>;
 
   Receiver(Simulator& sim, PacketPool& pool, std::uint32_t flow, Duration return_delay, FeedbackFn to_sender);
@@ -48,7 +52,14 @@ class Receiver {
   std::uint32_t flow_;
   Duration return_delay_;
   FeedbackFn to_sender_;
+  void flush();
+  void deliver();
+
   SeqUnwrapper unwrap_;
+  Fifo<FeedbackItem> items_;         // received, not yet handed to the sender; batches leave in order
+  Fifo<std::uint32_t> batches_;      // sizes of batches in flight on the return path
+  std::size_t unflushed_ = 0;        // items_ entries not yet assigned to a batch
+  bool flush_armed_ = false;
   std::vector<std::int64_t> owd_ns_;
   ReceiverInterval interval_;
   ReceiverCounters c_;

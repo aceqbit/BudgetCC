@@ -33,11 +33,49 @@ TEST(Receiver, FeedbackReturnsAfterReturnDelayWithRecvTime) {
   Rig r;
   r.sim.runUntil(fromMs(100));
   r.rx.onPacket(r.make(0, fromMs(60)));
-  r.sim.runUntil(fromMs(130));
+  r.sim.runUntil(fromMs(131));
   ASSERT_EQ(r.fb.size(), 1u);
   EXPECT_EQ(r.fb[0].first.seq, 0u);
   EXPECT_EQ(r.fb[0].first.recv_ts, fromMs(100));
-  EXPECT_EQ(r.fb[0].second, fromMs(120));  // recv + 20 ms
+  EXPECT_EQ(r.fb[0].second, fromMs(130));  // next 10 ms boundary (110) + 20 ms
+}
+
+TEST(Receiver, PacketsOfOneIntervalShareOneFeedbackBatch) {
+  Rig r;
+  r.sim.runUntil(fromMs(101));
+  r.rx.onPacket(r.make(0, fromMs(60)));
+  r.sim.runUntil(fromMs(104));
+  r.rx.onPacket(r.make(1, fromMs(60)));
+  r.sim.runUntil(fromMs(111));
+  r.rx.onPacket(r.make(2, fromMs(60)));  // next interval
+  r.sim.runUntil(fromMs(200));
+  ASSERT_EQ(r.fb.size(), 3u);
+  EXPECT_EQ(r.fb[0].second, fromMs(130));  // boundary 110 + 20
+  EXPECT_EQ(r.fb[1].second, fromMs(130));
+  EXPECT_EQ(r.fb[2].second, fromMs(140));  // boundary 120 + 20
+  EXPECT_EQ(r.fb[0].first.recv_ts, fromMs(101));  // items keep their own receive times
+  EXPECT_EQ(r.fb[1].first.recv_ts, fromMs(104));
+  EXPECT_EQ(r.fb[2].first.recv_ts, fromMs(111));
+  EXPECT_EQ(r.fb[0].first.seq, 0u);
+  EXPECT_EQ(r.fb[2].first.seq, 2u);
+}
+
+TEST(Receiver, ArrivalExactlyOnABoundaryWaitsForTheNextOne) {
+  Rig r;
+  r.sim.runUntil(fromMs(100));
+  r.rx.onPacket(r.make(0, fromMs(60)));
+  r.sim.runUntil(fromMs(200));
+  ASSERT_EQ(r.fb.size(), 1u);
+  EXPECT_EQ(r.fb[0].second, fromMs(130));
+}
+
+TEST(Receiver, OneFeedbackEventPerIntervalNotPerPacket) {
+  Rig r;
+  const std::uint64_t before = r.sim.eventsProcessed();
+  for (std::uint64_t s = 0; s < 50; ++s) r.rx.onPacket(r.make(s, 0));  // all at t = 0
+  r.sim.runUntil(fromMs(100));
+  EXPECT_EQ(r.fb.size(), 50u);
+  EXPECT_EQ(r.sim.eventsProcessed() - before, 2u);  // one flush + one delivery
 }
 
 TEST(Receiver, RecordsOwdAndCounters) {
@@ -63,7 +101,7 @@ TEST(Receiver, RecordsOwdAndCounters) {
 TEST(Receiver, UnwrapsSequenceAcrossWrap) {
   Rig r;
   for (std::uint64_t s : {65534ULL, 65535ULL, 65536ULL, 65537ULL}) r.rx.onPacket(r.make(s, 0));
-  r.sim.runUntil(fromMs(30));
+  r.sim.runUntil(fromMs(40));
   ASSERT_EQ(r.fb.size(), 4u);
   EXPECT_EQ(r.fb[2].first.seq, 65536u);
   EXPECT_EQ(r.fb[3].first.seq, 65537u);

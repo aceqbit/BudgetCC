@@ -60,10 +60,7 @@ jobs:
       - name: tsan diagnostics
         if: matrix.name == 'tsan' && failure()
         continue-on-error: true
-        run: |
-          out=$(ctest --preset tsan -R 'LokiPusher.GivesUp|LokiPusher.ClientErrors' --output-on-failure 2>&1 | head -c 3500 | python3 -c "import sys;print(sys.stdin.read().replace('%','%25').replace('','').replace('
-','%0A'))")
-          echo "::error::$out"
+        run: ctest --preset tsan -R 'LokiPusher' --output-on-failure 2>&1 | python tools/ci_emit.py
 
   coverage:
     runs-on: ubuntu-latest

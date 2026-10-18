@@ -89,11 +89,14 @@ TEST(BudgetCc, CapacityRisesSlowlyAndFallsFast) {
 TEST(BudgetCc, CollapseFastPathResetsTheEstimate) {
   BudgetCc b = make();
   Time t = feed(b, 0, 400, 20.0);  // 10 Mbps
-  for (int i = 0; i < 80; ++i) b.onTimer(t + fromMs(25) + fromMs(10) * i);
+  for (int i = 0; i < 150; ++i) {
+    t = feed(b, t, 10, 20.0);
+    b.onTimer(t + fromMs(25));
+  }
   const double high = b.capacityEstimateBps();
   ASSERT_GT(high, 6e6);
-  // an outage: nothing is received any more; the fast window empties and C_hat drops to ~floor in one tick
-  b.onTimer(t + fromMs(25) + fromMs(10) * 80 + fromMs(200));
+  // an outage: nothing is received any more; the fast window empties and C_hat drops by at least half in one tick
+  b.onTimer(t + fromMs(25) + fromMs(200));
   EXPECT_LE(b.capacityEstimateBps(), 0.5 * high);
   EXPECT_GE(b.pacingRateBps(), 100e3);
 }
@@ -101,7 +104,10 @@ TEST(BudgetCc, CollapseFastPathResetsTheEstimate) {
 TEST(BudgetCc, ProportionalDrainCapsRateAtCapacityTimesQstarOverQ) {
   BudgetCc b = make();
   Time t = feed(b, 0, 400, 20.0);
-  for (int i = 0; i < 80; ++i) b.onTimer(t + fromMs(25) + fromMs(10) * i);
+  for (int i = 0; i < 150; ++i) {
+    t = feed(b, t, 10, 20.0);
+    b.onTimer(t + fromMs(25));
+  }
   // standing queue of 2 x Q*: smoothed OWD 20 + 208 ms
   for (int i = 0; i < 200; ++i) b.onAck(ack(t + fromMs(1) * (i + 1), 228.0));
   t += fromMs(200);
@@ -170,4 +176,26 @@ TEST(BudgetCc, RandomStreamsKeepEverythingFiniteAndBounded) {
       }
     }
   }
+}
+
+TEST(BudgetCc, EmptyQueueNeverLowersTheCapacityEstimate) {
+  BudgetCc b = make();
+  Time t = feed(b, 0, 400, 20.0);  // 10 Mbps, flat OWD: queue estimate 0
+  for (int i = 0; i < 150; ++i) {
+    t = feed(b, t, 10, 20.0);
+    b.onTimer(t + fromMs(25));
+  }
+  const double before = b.capacityEstimateBps();
+  for (int i = 0; i < 20; ++i) {  // deliveries slow to 6.25 Mbps (sender-limited), queue still empty
+    t = feed(b, t, 6, 20.0, 1.6);
+    b.onTimer(t + fromMs(25));
+  }
+  EXPECT_GE(b.capacityEstimateBps(), 0.99 * before);  // slow-up only; no fast-down without a queue
+}
+
+TEST(BudgetCc, CollapsePathIsSkippedWhenTheWindowCannotHoldFourPackets) {
+  BudgetCc b = make(150.0, {{"start_rate_bps", 300e3}});  // 300 kbps: < 1 packet per 20 ms
+  feed(b, 0, 5, 20.0, 40.0);
+  b.onTimer(fromMs(400));
+  EXPECT_GE(b.capacityEstimateBps(), 0.99 * 300e3);
 }

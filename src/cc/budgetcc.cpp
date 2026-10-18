@@ -63,13 +63,19 @@ void BudgetCc::onTimer(Time now) {
       rtt_min_.empty(last_now_) ? fromMs(30) : rtt_min_.get(last_now_) - owd_min_.get(last_now_) + fromMs(10);
   const Time anchor = std::max(last_recv_, now - lag);
   const double sample = delivered_.rateBpsWarm(anchor, srtt);
+  // With an empty queue the delivery rate only reflects what we sent, not what the link can carry, so it may
+  // raise the estimate but not lower it (otherwise the estimate spirals down with the pacing rate).
+  const bool link_limited = q > kSaturationFraction * qstar;
   if (sample < c_hat_) {
-    c_hat_ = (1.0 - w_down_) * c_hat_ + w_down_ * sample;  // fast down
+    if (link_limited) c_hat_ = (1.0 - w_down_) * c_hat_ + w_down_ * sample;  // fast down
   } else {
     c_hat_ += w_up_ * (sample - c_hat_);  // slow up
   }
+  // Collapse fast path. A 20 ms window only holds whole packets, so it is trusted only when at least
+  // kCollapseMinPackets are expected in it at the current rate.
   const double fast = delivered_.rateBpsWarm(anchor, fromMs(20));
-  if (fast < 0.5 * c_hat_) c_hat_ = fast;  // collapse fast path
+  const bool resolvable = rate_ * 0.020 / 8.0 >= kCollapseMinPackets * kWireBytes;
+  if (resolvable && fast < 0.5 * c_hat_) c_hat_ = fast;
   c_hat_ = std::max(c_hat_, floor_rate_);
 
   const double e = (qstar - q) / qstar;

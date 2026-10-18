@@ -45,7 +45,6 @@ Filled in per gate.
 ## Limitations and claims
 
 - The baselines are this project's own simplified implementations, not the kernel's.
-- Phase 1 was intentionally unoptimised; speedups are relative to it.
 - BudgetCC was not compared against SCReAM or Copa.
 - Not claimed: first delay-budget controller.
 

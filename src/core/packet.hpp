@@ -18,8 +18,8 @@ struct Packet {
   std::uint32_t size = kWireBytes;
   Time send_ts = 0;
   Time enq_ts = 0;
-  Packet* live_prev = nullptr;  // PHASE1-NAIVE(E1): intrusive live list so the pool can free leftovers
-  Packet* live_next = nullptr;
+  Packet* next_free = nullptr;  // pool free list
+  bool in_use = false;
 };
 
 }  // namespace bcc

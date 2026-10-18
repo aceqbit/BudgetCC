@@ -1,13 +1,13 @@
 #pragma once
 #include <cstdint>
 #include <functional>
-#include <map>
 #include <memory>
 
 #include "cc/cc_interface.hpp"
 #include "core/packet_pool.hpp"
 #include "core/simulator.hpp"
 #include "transport/feedback.hpp"
+#include "transport/inflight_ring.hpp"
 #include "transport/pacer.hpp"
 #include "transport/traffic_source.hpp"
 
@@ -49,16 +49,10 @@ class Sender {
   const SenderCounters& counters() const { return c_; }
 
  private:
-  struct Sent {
-    Time send_ts;
-    std::uint32_t size;
-    int later_acked;
-  };
-
   void trySend();
   void sendOne(Time now);
   void armSendTimer(Time at);
-  void declareLost(std::map<std::uint64_t, Sent>::iterator it, Time now, bool timeout);
+  void declareLost(std::uint64_t seq, Time now, bool timeout);
   Duration lossTimeout() const;
 
   Simulator& sim_;
@@ -70,7 +64,7 @@ class Sender {
   Pacer pacer_;
   bool started_ = false;
   std::uint64_t next_seq_ = 0;
-  std::map<std::uint64_t, Sent> inflight_;  // PHASE1-NAIVE(E1): std::map keyed by sequence
+  InflightRing inflight_;
   std::uint64_t inflight_bytes_ = 0;
   Duration srtt_ = 0;
   std::uint64_t timer_gen_ = 0;

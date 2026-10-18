@@ -149,8 +149,8 @@ std::string historyLine(const std::string& change, const BenchResult& r, double 
       .num("events_per_s", r.events_per_s)
       .num("events_per_s_no_telemetry", r.events_per_s_no_telemetry)
       .num("cpu_per_ack_ns", r.cpu_per_ack_ns)
-      .num("allocs_per_pkt", r.allocs_per_pkt)
-      .num("matrix_runtime_s", matrix_runtime_s);
+      .num("allocs_per_pkt", r.allocs_per_pkt);
+  if (matrix_runtime_s > 0.0) o.num("matrix_runtime_s", matrix_runtime_s);  // M10 only when a matrix was timed
   return o.finish();
 }
 

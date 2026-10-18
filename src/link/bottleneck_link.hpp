@@ -1,8 +1,8 @@
 #pragma once
 #include <cstdint>
 #include <functional>
-#include <queue>
 
+#include "core/fifo.hpp"
 #include "core/packet.hpp"
 #include "core/packet_pool.hpp"
 #include "core/simulator.hpp"
@@ -47,7 +47,7 @@ class BottleneckLink {
   std::uint64_t limit_;
   Duration prop_;
   DeliverFn deliver_;
-  std::queue<Packet*> q_;  // PHASE1-NAIVE(E1): std::queue of heap packets
+  Fifo<Packet*> q_;  // index-based ring over pooled packets
   std::uint64_t queued_bytes_ = 0;
   std::uint64_t credit_ = 0;
   Duration last_sojourn_ = 0;

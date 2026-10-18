@@ -115,9 +115,9 @@ TEST(BottleneckLink, CapacityStepDelaySpikeMatchesArithmetic) {
   std::function<void()> tick = [&] {
     if (r.sim.now() >= stop) return;
     r.send(seq++);
-    r.sim.scheduleIn(gap, tick);
+    r.sim.scheduleIn(gap, [&tick] { tick(); });
   };
-  r.sim.schedule(0, tick);
+  r.sim.schedule(0, [&tick] { tick(); });
   r.sim.runUntil(stop);
   const double queue_bytes = static_cast<double>(r.link.queuedBytes());
   ASSERT_GT(queue_bytes, 500'000.0);

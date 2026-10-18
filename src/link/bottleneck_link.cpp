@@ -12,7 +12,8 @@ BottleneckLink::BottleneckLink(Simulator& sim, PacketPool& pool, const Trace& tr
       cursor_(trace),
       limit_(limit_bytes),
       prop_(propagation),
-      deliver_(std::move(deliver)) {}
+      deliver_(std::move(deliver)),
+      q_(static_cast<std::size_t>(limit_bytes / kWireBytes) + 1) {}
 
 void BottleneckLink::start() {
   const Trace::Opp o = cursor_.next();

@@ -1,20 +1,31 @@
 #include "core/packet_pool.hpp"
 
+#include <stdexcept>
+
 namespace bcc {
 
-PacketPool::~PacketPool() {
-  while (live_head_ != nullptr) {
-    Packet* next = live_head_->live_next;
-    delete live_head_;
-    live_head_ = next;
+void PacketPool::addSlab() {
+  slabs_.push_back(std::make_unique<Packet[]>(kSlabPackets));
+  Packet* slab = slabs_.back().get();
+  for (std::size_t i = 0; i < kSlabPackets; ++i) {
+    slab[i].next_free = free_head_;
+    free_head_ = &slab[i];
   }
+  capacity_ += kSlabPackets;
+  ++c_.slabs;
+}
+
+void PacketPool::reserve(std::size_t n) {
+  slabs_.reserve(n / kSlabPackets + 2);
+  while (capacity_ < n) addSlab();
 }
 
 Packet* PacketPool::alloc() {
-  Packet* p = new Packet();
-  p->live_next = live_head_;
-  if (live_head_ != nullptr) live_head_->live_prev = p;
-  live_head_ = p;
+  if (free_head_ == nullptr) addSlab();
+  Packet* p = free_head_;
+  free_head_ = p->next_free;
+  *p = Packet{};
+  p->in_use = true;
   ++c_.allocs;
   ++c_.in_use;
   if (c_.in_use > c_.peak_in_use) c_.peak_in_use = c_.in_use;
@@ -22,13 +33,10 @@ Packet* PacketPool::alloc() {
 }
 
 void PacketPool::free(Packet* p) {
-  if (p->live_prev != nullptr) {
-    p->live_prev->live_next = p->live_next;
-  } else {
-    live_head_ = p->live_next;
-  }
-  if (p->live_next != nullptr) p->live_next->live_prev = p->live_prev;
-  delete p;
+  if (!p->in_use) throw std::logic_error("PacketPool::free: packet is not allocated (double free)");
+  p->in_use = false;
+  p->next_free = free_head_;
+  free_head_ = p;
   ++c_.frees;
   --c_.in_use;
 }

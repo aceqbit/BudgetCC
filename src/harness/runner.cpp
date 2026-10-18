@@ -23,6 +23,11 @@ std::uint64_t mix(std::uint64_t x) {
 Experiment::Experiment(const RunConfig& cfg, const Trace& trace, std::uint32_t stream, SampleSink sink)
     : cfg_(cfg), trace_(trace), stream_(stream), sink_(std::move(sink)) {
   validate(cfg_);
+  // E1: size every growing buffer up front so the steady-state loop never allocates.
+  pool_.reserve(cfg_.buffer_pkts + kPoolSlack);
+  q_series_.reserve(static_cast<std::size_t>(cfg_.duration / kSampleInterval) + 2);
+  const std::size_t max_delivered =
+      static_cast<std::size_t>(trace_.opportunities(0, cfg_.duration) * kOpportunityBytes / kWireBytes) + 16;
   link_ = std::make_unique<BottleneckLink>(sim_, pool_, trace_, cfg_.bufferBytes(), cfg_.prop_delay, [this](Packet* p) {
     flows_.at(p->flow)->rx->onPacket(p);
   });
@@ -42,6 +47,7 @@ Experiment::Experiment(const RunConfig& cfg, const Trace& trace, std::uint32_t s
     Flow* fp = f.get();
     f->rx = std::make_unique<Receiver>(sim_, pool_, flow_id, cfg_.prop_delay,
                                        [this, i](const FeedbackItem& fb) { flows_[i]->tx->onFeedback(fb); });
+    f->rx->reserveSamples(max_delivered);
     f->tx = std::make_unique<Sender>(sim_, pool_, flow_id, makeCongestionControl(cfg_.algos[i], cc_cfg), *f->source,
                                      [this](Packet* p) { link_->onArrival(p); });
     flows_.push_back(std::move(f));

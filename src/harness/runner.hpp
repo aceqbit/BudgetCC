@@ -29,6 +29,7 @@ class Experiment {
  public:
   using SampleSink = std::function<void(const Sample&)>;
   static constexpr Duration kSampleInterval = 10'000'000;
+  static constexpr std::size_t kPoolSlack = 4096;  // packets beyond the buffer limit: propagation delay + feedback
 
   // `trace` must outlive the experiment. `stream` labels samples for the telemetry sink.
   Experiment(const RunConfig& cfg, const Trace& trace, std::uint32_t stream = 0, SampleSink sink = {});

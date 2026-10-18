@@ -1,8 +1,5 @@
 #include "core/simulator.hpp"
 
-#include <stdexcept>
-#include <utility>
-
 namespace bcc {
 
 namespace {
@@ -15,17 +12,12 @@ std::uint64_t fnv(std::uint64_t h, std::uint64_t v) {
 }
 }  // namespace
 
-void Simulator::schedule(Time at, std::function<void()> fn) {
-  if (at < now_) throw std::logic_error("Simulator::schedule: event in the past");
-  q_.push(at, std::move(fn));
-}
-
 bool Simulator::step(Time limit) {
   if (q_.empty() || q_.nextTime() >= limit) return false;
-  EventQueue::Event e = q_.pop();
+  Event e = q_.pop();
   now_ = e.time;
   hash_ = fnv(fnv(hash_, static_cast<std::uint64_t>(e.time)), e.seq);
-  e.fn();
+  e.run();
   return true;
 }
 

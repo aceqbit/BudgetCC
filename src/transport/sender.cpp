@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <utility>
-#include <vector>
 
 #include "transport/rtp_header.hpp"
 
@@ -29,8 +28,8 @@ void Sender::start(Time at) {
 void Sender::onControlTick(Time now) {
   cc_->onTimer(now);
   pacer_.setRate(cc_->pacingRateBps());
-  while (!inflight_.empty() && now - inflight_.begin()->second.send_ts > lossTimeout())
-    declareLost(inflight_.begin(), now, true);
+  while (!inflight_.empty() && now - inflight_.oldest().send_ts > lossTimeout())
+    declareLost(inflight_.oldestSeq(), now, true);
   trySend();
   sim_.schedule(now + kControlInterval, [this] { onControlTick(sim_.now()); });
 }
@@ -38,7 +37,7 @@ void Sender::onControlTick(Time now) {
 Duration Sender::lossTimeout() const { return std::max<Duration>(200'000'000, 2 * srtt_); }
 
 void Sender::trackSent(std::uint64_t seq, Time send_ts, std::uint32_t size) {
-  inflight_[seq] = Sent{send_ts, size, 0};
+  inflight_.insert(seq, Sent{send_ts, size, 0});
   inflight_bytes_ += size;
   next_seq_ = std::max(next_seq_, seq + 1);
   ++c_.sent_pkts;
@@ -88,32 +87,29 @@ void Sender::sendOne(Time now) {
   tx_(p);
 }
 
-void Sender::declareLost(std::map<std::uint64_t, Sent>::iterator it, Time now, bool timeout) {
-  const LossInfo l{now, it->first, it->second.size, timeout};
-  inflight_bytes_ -= it->second.size;
-  inflight_.erase(it);
+void Sender::declareLost(std::uint64_t seq, Time now, bool timeout) {
+  const LossInfo l{now, seq, inflight_.find(seq)->size, timeout};
+  inflight_bytes_ -= l.bytes;
+  inflight_.erase(seq);
   ++c_.lost_pkts;
   if (timeout) ++c_.timeouts;
   cc_->onLoss(l);
 }
 
 void Sender::onFeedbackAt(Time now, const FeedbackItem& fb) {
-  auto it = inflight_.find(fb.seq);
-  if (it == inflight_.end()) return;  // already declared lost
-  const Sent s = it->second;
+  const Sent* found = inflight_.find(fb.seq);
+  if (found == nullptr) return;  // already declared lost
+  const Sent s = *found;
   inflight_bytes_ -= s.size;
-  inflight_.erase(it);
+  inflight_.erase(fb.seq);
   ++c_.acked_pkts;
   const Duration rtt = now - s.send_ts;
   srtt_ = srtt_ == 0 ? rtt : srtt_ + (rtt - srtt_) / 8;
   cc_->onAck(AckInfo{now, s.send_ts, fb.recv_ts, s.size, fb.seq, rtt, fb.recv_ts - s.send_ts});
 
-  std::vector<std::uint64_t> lost;
-  for (auto& kv : inflight_) {
-    if (kv.first > fb.seq) break;
-    if (++kv.second.later_acked >= kReorderThreshold) lost.push_back(kv.first);
-  }
-  for (std::uint64_t seq : lost) declareLost(inflight_.find(seq), now, false);
+  inflight_.forEachBelow(fb.seq, [&](std::uint64_t seq, Sent& older) {
+    if (++older.later_acked >= kReorderThreshold) declareLost(seq, now, false);
+  });
   trySend();
 }
 

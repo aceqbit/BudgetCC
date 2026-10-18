@@ -1,6 +1,6 @@
 #pragma once
 #include <cstdint>
-#include <functional>
+#include <stdexcept>
 #include <utility>
 
 #include "core/clock.hpp"
@@ -12,8 +12,15 @@ namespace bcc {
 class Simulator {
  public:
   Time now() const { return now_; }
-  void schedule(Time at, std::function<void()> fn);
-  void scheduleIn(Duration d, std::function<void()> fn) { schedule(now_ + d, std::move(fn)); }
+  template <class F>
+  void schedule(Time at, F fn) {
+    if (at < now_) throw std::logic_error("Simulator::schedule: event in the past");
+    q_.push(at, fn);
+  }
+  template <class F>
+  void scheduleIn(Duration d, F fn) {
+    schedule(now_ + d, fn);
+  }
   // Runs the next event if its time is < limit. Returns false when nothing ran.
   bool step(Time limit);
   // Processes every event with time < end, then sets now() = end.

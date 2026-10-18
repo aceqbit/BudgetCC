@@ -55,3 +55,12 @@ TEST(Bench, JsonCarriesSchemaEnvAndEntryFields) {
   EXPECT_NE(h.find("\"change\":\"E1\""), std::string::npos);
   EXPECT_NE(h.find("\"git_sha\""), std::string::npos);
 }
+
+TEST(Bench, HistoryLineOmitsMatrixRuntimeWhenNoMatrixWasTimed) {
+  BenchResult r;
+  r.events_per_s = 1.5;
+  const std::string h = historyLine("E1", r, 0.0);
+  EXPECT_EQ(h.find("matrix_runtime_s"), std::string::npos);
+  EXPECT_NE(h.find("\"events_per_s\":1.5"), std::string::npos);
+  EXPECT_NE(historyLine("E1", r, 3.0).find("\"matrix_runtime_s\":3"), std::string::npos);
+}

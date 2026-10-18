@@ -39,6 +39,8 @@ class Receiver {
   const ReceiverCounters& counters() const { return c_; }
   const std::vector<std::int64_t>& owdNs() const { return owd_ns_; }
   ReceiverInterval takeInterval();
+  // Preallocates room for n one-way-delay samples so recording never allocates (E1).
+  void reserveSamples(std::size_t n) { owd_ns_.reserve(n); }
 
  private:
   Simulator& sim_;

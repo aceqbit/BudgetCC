@@ -69,9 +69,9 @@ TEST(Simulator, EventsMayScheduleMoreEvents) {
   Simulator sim;
   int n = 0;
   std::function<void()> tick = [&] {
-    if (++n < 5) sim.scheduleIn(10, tick);
+    if (++n < 5) sim.scheduleIn(10, [&tick] { tick(); });
   };
-  sim.schedule(0, tick);
+  sim.schedule(0, [&tick] { tick(); });
   sim.runUntil(1000);
   EXPECT_EQ(n, 5);
   EXPECT_EQ(sim.eventsProcessed(), 5u);

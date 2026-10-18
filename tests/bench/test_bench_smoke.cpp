@@ -24,6 +24,7 @@ TEST(Bench, MedianOddEvenAndEmpty) {
 }
 
 TEST(Bench, AllocationHookCountsOperatorNew) {
+  if (!allocationCounterActive()) GTEST_SKIP() << "sanitizer build: the runtime owns operator new";
   const std::uint64_t before = allocationCount();
   int* volatile p = new int(7);  // volatile: the compiler may not elide the new/delete pair
   EXPECT_EQ(allocationCount(), before + 1);
@@ -69,4 +70,11 @@ TEST(Bench, ExplicitShaOverridesTheCompiledOne) {
   BenchResult r;
   EXPECT_NE(historyLine("E1", r, 0.0, "abc123").find("\"git_sha\":\"abc123\""), std::string::npos);
   EXPECT_NE(benchJson("p2", r, 0.0, "abc123").find("\"git_sha\":\"abc123\""), std::string::npos);
+}
+
+TEST(Bench, CounterReportsWhetherItIsActive) {
+  const std::uint64_t before = allocationCount();
+  int* volatile p = new int(1);
+  delete p;
+  EXPECT_EQ(allocationCount() != before, allocationCounterActive());
 }

@@ -10,6 +10,11 @@
 
 namespace bcc {
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4324)  // structure padded because of alignas: the padding is the point
+#endif
+
 // Wait-free SPSC ring (E4). Positions grow monotonically; the slot is position % capacity, so any capacity works.
 // push() never blocks: a full ring drops the item and counts it. T must be trivially copyable.
 template <class T>
@@ -64,5 +69,9 @@ class SpscRing {
   std::vector<T> buf_;
   Cursors c_;
 };
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 }  // namespace bcc

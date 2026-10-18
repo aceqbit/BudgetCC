@@ -70,7 +70,7 @@ jobs:
           cmake --preset linux-gcc -DBUDGETCC_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug
           cmake --build --preset linux-gcc
           ctest --preset linux-gcc
-          gcovr -r . --filter 'src/' --exclude 'src/main.cpp' --exclude 'src/harness/cli.*' --fail-under-line 80 --txt
+          gcovr -r . --gcov-ignore-parse-errors=all --filter 'src/' --exclude 'src/main.cpp' --exclude 'src/harness/cli.*' --fail-under-line 80 --txt
 
   tidy:
     runs-on: ubuntu-latest

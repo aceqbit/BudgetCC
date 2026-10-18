@@ -10,6 +10,7 @@ using namespace bcc;
 
 // M9 hook: after the startup phase the simulation loop must not call operator new.
 TEST(ZeroAlloc, SteadyStateLoopDoesNotAllocate) {
+  if (!allocationCounterActive()) GTEST_SKIP() << "sanitizer build: the runtime owns operator new";
   for (const char* algo : {"reno", "cubic"}) {
     RunConfig cfg;
     cfg.algos = {algo};

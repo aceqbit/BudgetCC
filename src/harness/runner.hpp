@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 
+#include "cc/cc_interface.hpp"
 #include "core/packet_pool.hpp"
 #include "core/simulator.hpp"
 #include "harness/config.hpp"
@@ -45,7 +46,7 @@ class Experiment {
   PacketPool& pool() { return pool_; }
   BottleneckLink& link() { return *link_; }
   std::size_t flows() const { return flows_.size(); }
-  Sender& sender(std::size_t i) { return *flows_[i]->tx; }
+  SenderBase& sender(std::size_t i) { return *flows_[i]->tx; }
   Receiver& receiver(std::size_t i) { return *flows_[i]->rx; }
   const std::vector<double>& queueSeries() const { return q_series_; }
   std::uint64_t packetsSent() const;
@@ -55,12 +56,14 @@ class Experiment {
     std::unique_ptr<TrafficSource> source;
     VideoSource* video = nullptr;
     std::unique_ptr<Receiver> rx;
-    std::unique_ptr<Sender> tx;
+    std::unique_ptr<SenderBase> tx;
     std::uint64_t last_lost = 0;
     double last_owd_ms = 0.0;
     std::uint64_t frame_index = 0;
   };
 
+  template <class CC>
+  void addFlow(std::size_t i, std::unique_ptr<CC> cc);
   void sampleTick();
   void videoTick(Flow& f);
   void checkInvariants() const;
@@ -68,6 +71,8 @@ class Experiment {
 
   RunConfig cfg_;
   const Trace& trace_;
+  CcConfig cc_cfg_;
+  std::size_t max_delivered_ = 0;
   std::uint32_t stream_;
   SampleSink sink_;
   Simulator sim_;

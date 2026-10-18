@@ -1,12 +1,10 @@
-#include <stdexcept>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
-#include "cc/bbr_lite.hpp"
-#include "cc/budgetcc.hpp"
 #include "cc/cc_interface.hpp"
-#include "cc/cubic.hpp"
-#include "cc/gcc_lite.hpp"
-#include "cc/params.hpp"
-#include "cc/reno.hpp"
+#include "cc/dispatch.hpp"
 
 namespace bcc {
 
@@ -16,23 +14,7 @@ const std::vector<std::string>& congestionControlNames() {
 }
 
 std::unique_ptr<CongestionControl> makeCongestionControl(const std::string& name, const CcConfig& cfg) {
-  ParamReader p(cfg.params, name);
-  std::unique_ptr<CongestionControl> cc;
-  if (name == "reno") {
-    cc = std::make_unique<Reno>(p);
-  } else if (name == "cubic") {
-    cc = std::make_unique<Cubic>(p);
-  } else if (name == "bbr_lite") {
-    cc = std::make_unique<BbrLite>(p);
-  } else if (name == "gcc_lite") {
-    cc = std::make_unique<GccLite>(p);
-  } else if (name == "budgetcc") {
-    cc = std::make_unique<BudgetCc>(p, cfg.budget_ms);
-  } else {
-    throw std::invalid_argument("unknown congestion control '" + name + "'");
-  }
-  p.finish();
-  return cc;
+  return visitCongestionControl(name, cfg, [](auto cc) { return std::unique_ptr<CongestionControl>(std::move(cc)); });
 }
 
 }  // namespace bcc

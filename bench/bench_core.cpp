@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include "alloc_counter.hpp"
+#include "cc/dispatch.hpp"
 #include "core/json.hpp"
 #include "harness/config.hpp"
 #include "harness/instrumented.hpp"
@@ -66,34 +67,43 @@ double measureEventsPerSecond(const BenchOptions& o, bool telemetry) {
   return median(rates);
 }
 
-double measureCpuPerAck(const BenchOptions& o) {
-  constexpr std::uint64_t kBatch = 1000;  // packets in flight while a batch of feedback is replayed
+namespace {
+// One replay of o.ack_count feedback events through BasicSender<CC>::onFeedbackAt; returns ns per ACK.
+template <class CC>
+double replayAcks(std::unique_ptr<CC> controller, const BenchOptions& o) {
+  constexpr std::uint64_t kBatch = 1000;      // packets in flight while a batch of feedback is replayed
   constexpr Duration kPacketGap = 1'250'000;  // 10 Mbps of 1250 B packets
-  std::vector<double> ns_per_ack;
-  for (int rep = 0; rep < o.repeats; ++rep) {
-    Simulator sim;
-    PacketPool pool;
-    BulkSource source;
-    CcConfig cc;
-    Sender sender(sim, pool, 0, makeCongestionControl("budgetcc", cc), source, [](Packet*) {});
-    std::uint64_t state = 12345;  // deterministic queueing-delay jitter, 0..39 ms
-    double timed_ns = 0.0;
-    std::uint64_t acks = 0;
-    for (std::uint64_t first = 0; acks < o.ack_count; first += kBatch) {
-      for (std::uint64_t i = 0; i < kBatch; ++i)
-        sender.trackSent(first + i, static_cast<Time>(first + i) * kPacketGap, 1250);
-      const auto t0 = Clock::now();
-      for (std::uint64_t i = 0; i < kBatch; ++i) {
-        state = state * 6364136223846793005ULL + 1442695040888963407ULL;
-        const Time send_ts = static_cast<Time>(first + i) * kPacketGap;
-        const Time recv_ts = send_ts + 20'000'000 + static_cast<Time>((state >> 33) % 40) * 1'000'000;
-        sender.onFeedbackAt(recv_ts + 20'000'000, FeedbackItem{first + i, recv_ts});
-      }
-      timed_ns += std::chrono::duration<double, std::nano>(Clock::now() - t0).count();
-      acks += kBatch;
+  Simulator sim;
+  PacketPool pool;
+  BulkSource source;
+  BasicSender<CC> sender(sim, pool, 0, std::move(controller), source, [](Packet*) {});
+  std::uint64_t state = 12345;  // deterministic queueing-delay jitter, 0..39 ms
+  double timed_ns = 0.0;
+  std::uint64_t acks = 0;
+  for (std::uint64_t first = 0; acks < o.ack_count; first += kBatch) {
+    for (std::uint64_t i = 0; i < kBatch; ++i)
+      sender.trackSent(first + i, static_cast<Time>(first + i) * kPacketGap, 1250);
+    const auto t0 = Clock::now();
+    for (std::uint64_t i = 0; i < kBatch; ++i) {
+      state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+      const Time send_ts = static_cast<Time>(first + i) * kPacketGap;
+      const Time recv_ts = send_ts + 20'000'000 + static_cast<Time>((state >> 33) % 40) * 1'000'000;
+      sender.onFeedbackAt(recv_ts + 20'000'000, FeedbackItem{first + i, recv_ts});
     }
-    ns_per_ack.push_back(timed_ns / static_cast<double>(acks));
+    timed_ns += std::chrono::duration<double, std::nano>(Clock::now() - t0).count();
+    acks += kBatch;
   }
+  return timed_ns / static_cast<double>(acks);
+}
+}  // namespace
+
+double measureCpuPerAck(const BenchOptions& o) {
+  std::vector<double> ns_per_ack;
+  const CcConfig cc;
+  for (int rep = 0; rep < o.repeats; ++rep)
+    ns_per_ack.push_back(visitCongestionControl("budgetcc", cc, [&](auto controller) {
+      return replayAcks(std::move(controller), o);
+    }));
   return median(ns_per_ack);
 }
 

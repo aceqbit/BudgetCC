@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "cc/cc_interface.hpp"
+#include "cc/dispatch.hpp"
 
 namespace bcc {
 
@@ -26,38 +27,43 @@ Experiment::Experiment(const RunConfig& cfg, const Trace& trace, std::uint32_t s
   // E1: size every growing buffer up front so the steady-state loop never allocates.
   pool_.reserve(cfg_.buffer_pkts + kPoolSlack);
   q_series_.reserve(static_cast<std::size_t>(cfg_.duration / kSampleInterval) + 2);
-  const std::size_t max_delivered =
-      static_cast<std::size_t>(trace_.opportunities(0, cfg_.duration) * kOpportunityBytes / kWireBytes) + 16;
+  max_delivered_ = static_cast<std::size_t>(trace_.opportunities(0, cfg_.duration) * kOpportunityBytes / kWireBytes) + 16;
   link_ = std::make_unique<BottleneckLink>(sim_, pool_, trace_, cfg_.bufferBytes(), cfg_.prop_delay, [this](Packet* p) {
     flows_.at(p->flow)->rx->onPacket(p);
   });
-  CcConfig cc_cfg;
-  cc_cfg.budget_ms = cfg_.budget_ms;
-  cc_cfg.params = cfg_.cc_params;
-  for (std::size_t i = 0; i < cfg_.algos.size(); ++i) {
-    auto f = std::make_unique<Flow>();
-    const auto flow_id = static_cast<std::uint32_t>(i);
-    if (cfg_.mode == "video") {
-      auto v = std::make_unique<VideoSource>();
-      f->video = v.get();
-      f->source = std::move(v);
-    } else {
-      f->source = std::make_unique<BulkSource>();
-    }
-    Flow* fp = f.get();
-    f->rx = std::make_unique<Receiver>(sim_, pool_, flow_id, cfg_.prop_delay,
-                                       [this, i](const FeedbackItem& fb) { flows_[i]->tx->onFeedback(fb); });
-    f->rx->reserveSamples(max_delivered);
-    f->tx = std::make_unique<Sender>(sim_, pool_, flow_id, makeCongestionControl(cfg_.algos[i], cc_cfg), *f->source,
-                                     [this](Packet* p) { link_->onArrival(p); });
-    flows_.push_back(std::move(f));
-    // Flow 0 starts at t = 0; later flows start within 10 ms, derived from the seed.
-    const Time start = i == 0 ? 0 : static_cast<Time>(mix(cfg_.seed * 1000003ULL + i) % 10) * fromMs(1);
-    fp->tx->start(start);
-    if (fp->video != nullptr) sim_.schedule(start, [this, fp] { videoTick(*fp); });
-  }
+  cc_cfg_.budget_ms = cfg_.budget_ms;
+  cc_cfg_.params = cfg_.cc_params;
+  for (std::size_t i = 0; i < cfg_.algos.size(); ++i)
+    visitCongestionControl(cfg_.algos[i], cc_cfg_, [&](auto cc) { addFlow(i, std::move(cc)); });
   link_->start();
   sim_.schedule(kSampleInterval, [this] { sampleTick(); });
+}
+
+// Builds flow i around the concrete controller type CC so the sender's per-packet calls are not virtual (E5).
+template <class CC>
+void Experiment::addFlow(std::size_t i, std::unique_ptr<CC> cc) {
+  auto f = std::make_unique<Flow>();
+  const auto flow_id = static_cast<std::uint32_t>(i);
+  if (cfg_.mode == "video") {
+    auto v = std::make_unique<VideoSource>();
+    f->video = v.get();
+    f->source = std::move(v);
+  } else {
+    f->source = std::make_unique<BulkSource>();
+  }
+  Flow* fp = f.get();
+  auto tx = std::make_unique<BasicSender<CC>>(sim_, pool_, flow_id, std::move(cc), *f->source,
+                                              [this](Packet* p) { link_->onArrival(p); });
+  BasicSender<CC>* typed = tx.get();
+  f->rx = std::make_unique<Receiver>(sim_, pool_, flow_id, cfg_.prop_delay,
+                                     [typed](const FeedbackItem& fb) { typed->onFeedback(fb); });
+  f->rx->reserveSamples(max_delivered_);
+  f->tx = std::move(tx);
+  flows_.push_back(std::move(f));
+  // Flow 0 starts at t = 0; later flows start within 10 ms, derived from the seed.
+  const Time start = i == 0 ? 0 : static_cast<Time>(mix(cfg_.seed * 1000003ULL + i) % 10) * fromMs(1);
+  fp->tx->start(start);
+  if (fp->video != nullptr) sim_.schedule(start, [this, fp] { videoTick(*fp); });
 }
 
 Experiment::~Experiment() = default;

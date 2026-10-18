@@ -1,0 +1,138 @@
+6 traces verified in C:\Users\ASHWIN S\OneDrive\Desktop\BudgetCC\traces\real
++ python -c import shutil,sys;shutil.copytree(sys.argv[1],sys.argv[2],dirs_exist_ok=True) C:\Users\ASHWIN S\OneDrive\Desktop\BudgetCC\traces\real C:\Users\ASHWIN~1\AppData\Local\Temp\tmpa_so334m\base_src\traces\real
++ cmake -S C:\Users\ASHWIN~1\AppData\Local\Temp\tmpa_so334m\base_src -B C:\Users\ASHWIN~1\AppData\Local\Temp\tmpa_so334m\base_build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUDGETCC_GIT_SHA=v0.1-baseline -DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_FMT=C:\Users\ASHWIN S\OneDrive\Desktop\BudgetCC\build\dev-mingw\_deps\fmt-src -DFETCHCONTENT_SOURCE_DIR_CLI11=C:\Users\ASHWIN S\OneDrive\Desktop\BudgetCC\build\dev-mingw\_deps\cli11-src -DFETCHCONTENT_SOURCE_DIR_HTTPLIB=C:\Users\ASHWIN S\OneDrive\Desktop\BudgetCC\build\dev-mingw\_deps\httplib-src -DFETCHCONTENT_SOURCE_DIR_GOOGLETEST=C:\Users\ASHWIN S\OneDrive\Desktop\BudgetCC\build\dev-mingw\_deps\googletest-src
+-- The CXX compiler identification is GNU 14.1.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/msys64/ucrt64/bin/c++.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- {fmt} version: 11.0.2
+-- Build type: Release
+CMake Deprecation Warning at C:/Users/ASHWIN S/OneDrive/Desktop/BudgetCC/build/dev-mingw/_deps/cli11-src/CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+
+-- The C compiler identification is GNU 14.1.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: C:/msys64/ucrt64/bin/cc.exe - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE
+-- Configuring done (7.5s)
+-- Generating done (0.3s)
+-- Build files have been written to: C:/Users/ASHWIN~1/AppData/Local/Temp/tmpa_so334m/base_build
++ cmake --build C:\Users\ASHWIN~1\AppData\Local\Temp\tmpa_so334m\base_build --target budgetcc budgetcc_bench
+[0/2] Re-checking globbed directories...
+[1/42] Building CXX object CMakeFiles/bcc_core.dir/src/core/packet_pool.cpp.obj
+[2/42] Building CXX object CMakeFiles/bcc_transport.dir/src/transport/rtp_header.cpp.obj
+[3/42] Building CXX object CMakeFiles/bcc_transport.dir/src/transport/receiver.cpp.obj
+[4/42] Building CXX object CMakeFiles/bcc_core.dir/src/core/event_queue.cpp.obj
+[5/42] Building CXX object CMakeFiles/bcc_core.dir/src/core/simulator.cpp.obj
+[6/42] Building CXX object CMakeFiles/bcc_cc.dir/src/cc/reno.cpp.obj
+[7/42] Building CXX object CMakeFiles/bcc_cc.dir/src/cc/bbr_lite.cpp.obj
+[8/42] Building CXX object CMakeFiles/bcc_link.dir/src/link/bottleneck_link.cpp.obj
+[9/42] Building CXX object CMakeFiles/bcc_cc.dir/src/cc/cubic.cpp.obj
+[10/42] Building CXX object CMakeFiles/bcc_transport.dir/src/transport/traffic_source.cpp.obj
+[11/42] Building CXX object CMakeFiles/bcc_link.dir/src/link/trace_loader.cpp.obj
+[12/42] Building CXX object _deps/fmt-build/CMakeFiles/fmt.dir/src/os.cc.obj
+[13/42] Building CXX object CMakeFiles/bcc_cc.dir/src/cc/budgetcc.cpp.obj
+[14/42] Building CXX object CMakeFiles/bcc_cc.dir/src/cc/factory.cpp.obj
+[15/42] Building CXX object CMakeFiles/bcc_telemetry.dir/src/telemetry/json_writer.cpp.obj
+[16/42] Building CXX object CMakeFiles/bcc_cc.dir/src/cc/gcc_lite.cpp.obj
+[17/42] Building CXX object CMakeFiles/bcc_telemetry.dir/src/telemetry/csv_writer.cpp.obj
+[18/42] Building CXX object CMakeFiles/bcc_bench.dir/bench/alloc_counter.cpp.obj
+[19/42] Building CXX object CMakeFiles/bcc_transport.dir/src/transport/sender.cpp.obj
+[20/42] Building CXX object CMakeFiles/budgetcc.dir/src/main.cpp.obj
+[21/42] Building CXX object CMakeFiles/bcc_harness.dir/src/harness/instrumented.cpp.obj
+[22/42] Building CXX object CMakeFiles/bcc_harness.dir/src/harness/summary.cpp.obj
+[23/42] Building CXX object CMakeFiles/bcc_harness.dir/src/harness/config.cpp.obj
+[24/42] Building CXX object CMakeFiles/bcc_harness.dir/src/harness/runner.cpp.obj
+[25/42] Building CXX object CMakeFiles/bcc_harness.dir/src/harness/results.cpp.obj
+[26/42] Building CXX object CMakeFiles/bcc_harness.dir/src/harness/matrix.cpp.obj
+[27/42] Building CXX object CMakeFiles/bcc_bench.dir/bench/bench_core.cpp.obj
+[28/42] Building CXX object _deps/fmt-build/CMakeFiles/fmt.dir/src/format.cc.obj
+[29/42] Linking CXX static library _deps\fmt-build\libfmt.a
+[30/42] Linking CXX static library libbcc_core.a
+[31/42] Linking CXX static library libbcc_link.a
+[32/42] Linking CXX static library libbcc_cc.a
+[33/42] Linking CXX static library libbcc_transport.a
+[34/42] Building CXX object CMakeFiles/budgetcc_bench.dir/bench/bench_main.cpp.obj
+[35/42] Building CXX object CMakeFiles/bcc_harness.dir/src/harness/cli.cpp.obj
+[36/42] Building CXX object CMakeFiles/bcc_telemetry.dir/src/telemetry/loki_pusher.cpp.obj
+[37/42] Linking CXX static library libbcc_telemetry.a
+[38/42] Linking CXX static library libbcc_harness.a
+[39/42] Linking CXX static library libbcc_bench.a
+[40/42] Linking CXX executable budgetcc.exe
+[41/42] Linking CXX executable budgetcc_bench.exe
++ cmake -S C:\Users\ASHWIN S\OneDrive\Desktop\BudgetCC -B C:\Users\ASHWIN~1\AppData\Local\Temp\tmpa_so334m\cur_build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUDGETCC_GIT_SHA=846bde2552bb -DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_FMT=C:\Users\ASHWIN S\OneDrive\Desktop\BudgetCC\build\dev-mingw\_deps\fmt-src -DFETCHCONTENT_SOURCE_DIR_CLI11=C:\Users\ASHWIN S\OneDrive\Desktop\BudgetCC\build\dev-mingw\_deps\cli11-src -DFETCHCONTENT_SOURCE_DIR_HTTPLIB=C:\Users\ASHWIN S\OneDrive\Desktop\BudgetCC\build\dev-mingw\_deps\httplib-src -DFETCHCONTENT_SOURCE_DIR_GOOGLETEST=C:\Users\ASHWIN S\OneDrive\Desktop\BudgetCC\build\dev-mingw\_deps\googletest-src -DBUDGETCC_LTO=ON
+-- The CXX compiler identification is GNU 14.1.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/msys64/ucrt64/bin/c++.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- {fmt} version: 11.0.2
+-- Build type: Release
+CMake Deprecation Warning at build/dev-mingw/_deps/cli11-src/CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+
+-- The C compiler identification is GNU 14.1.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: C:/msys64/ucrt64/bin/cc.exe - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE
+-- Configuring done (9.7s)
+-- Generating done (0.3s)
+-- Build files have been written to: C:/Users/ASHWIN~1/AppData/Local/Temp/tmpa_so334m/cur_build
++ cmake --build C:\Users\ASHWIN~1\AppData\Local\Temp\tmpa_so334m\cur_build --target budgetcc budgetcc_bench
+[0/2] Re-checking globbed directories...
+[1/40] Building CXX object CMakeFiles/bcc_transport.dir/src/transport/rtp_header.cpp.obj
+[2/40] Building CXX object CMakeFiles/bcc_core.dir/src/core/simulator.cpp.obj
+[3/40] Building CXX object CMakeFiles/bcc_core.dir/src/core/packet_pool.cpp.obj
+[4/40] Building CXX object CMakeFiles/bcc_transport.dir/src/transport/traffic_source.cpp.obj
+[5/40] Building CXX object CMakeFiles/bcc_cc.dir/src/cc/reno.cpp.obj
+[6/40] Building CXX object CMakeFiles/bcc_cc.dir/src/cc/cubic.cpp.obj
+[7/40] Building CXX object CMakeFiles/bcc_link.dir/src/link/bottleneck_link.cpp.obj
+[8/40] Building CXX object CMakeFiles/bcc_cc.dir/src/cc/budgetcc.cpp.obj
+[9/40] Building CXX object CMakeFiles/bcc_transport.dir/src/transport/receiver.cpp.obj
+[10/40] Building CXX object CMakeFiles/bcc_link.dir/src/link/trace_loader.cpp.obj
+[11/40] Building CXX object CMakeFiles/bcc_cc.dir/src/cc/bbr_lite.cpp.obj
+[12/40] Building CXX object CMakeFiles/bcc_cc.dir/src/cc/gcc_lite.cpp.obj
+[13/40] Building CXX object CMakeFiles/bcc_cc.dir/src/cc/factory.cpp.obj
+[14/40] Building CXX object CMakeFiles/bcc_telemetry.dir/src/telemetry/json_writer.cpp.obj
+[15/40] Building CXX object CMakeFiles/bcc_telemetry.dir/src/telemetry/csv_writer.cpp.obj
+[16/40] Building CXX object CMakeFiles/bcc_bench.dir/bench/alloc_counter.cpp.obj
+[17/40] Building CXX object CMakeFiles/bcc_harness.dir/src/harness/summary.cpp.obj
+[18/40] Building CXX object _deps/fmt-build/CMakeFiles/fmt.dir/src/os.cc.obj
+[19/40] Building CXX object CMakeFiles/bcc_harness.dir/src/harness/instrumented.cpp.obj
+[20/40] Building CXX object CMakeFiles/budgetcc.dir/src/main.cpp.obj
+[21/40] Building CXX object CMakeFiles/bcc_harness.dir/src/harness/results.cpp.obj
+[22/40] Building CXX object CMakeFiles/bcc_harness.dir/src/harness/config.cpp.obj
+[23/40] Building CXX object CMakeFiles/bcc_harness.dir/src/harness/matrix.cpp.obj
+[24/40] Building CXX object CMakeFiles/bcc_harness.dir/src/harness/runner.cpp.obj
+[25/40] Building CXX object CMakeFiles/bcc_bench.dir/bench/bench_core.cpp.obj
+[26/40] Building CXX object _deps/fmt-build/CMakeFiles/fmt.dir/src/format.cc.obj
+[27/40] Linking CXX static library _deps\fmt-build\libfmt.a
+[28/40] Linking CXX static library libbcc_core.a
+[29/40] Linking CXX static library libbcc_link.a
+[30/40] Linking CXX static library libbcc_cc.a
+[31/40] Linking CXX static library libbcc_transport.a

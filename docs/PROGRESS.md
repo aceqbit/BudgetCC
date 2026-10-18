@@ -13,3 +13,4 @@ Start: 2026-10-18T08:40:29Z (UTC)
 - G5: Phase 1 matrix 250/250 runs (results/phase1.json, git f110d12, matrix 5637 s serial), bench_p1.json, README block generated; tag v0.1-baseline. CI status unverifiable locally (gh not authenticed).
 - Plan cut (user request, speed): no retroactive per-step A/B builds; one interleaved P1-vs-P2 A/B session at the end; A4 cut.
 - Plan trimmed (user): speed mode in CLAUDE.md section 1; cuts: A4, dashboard v2, per-step benches, fresh-clone reproduce.
+- A2 cut (sweep ran: best k .25/margin .1/w_down .3 on tune traces, not applied; spec defaults kept).

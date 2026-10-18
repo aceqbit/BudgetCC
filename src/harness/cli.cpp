@@ -2,14 +2,18 @@
 
 #include <CLI/CLI.hpp>
 #include <charconv>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 
 #include "harness/config.hpp"
+#include "harness/matrix.hpp"
 #include "harness/results.hpp"
 #include "harness/runner.hpp"
 #include "link/trace_loader.hpp"
+#include "telemetry/csv_writer.hpp"
 
 namespace bcc {
 
@@ -44,7 +48,17 @@ int doRun(RunOptions& o, std::ostream& out) {
   normalize(o.cfg);
   validate(o.cfg);
   const Trace trace = Trace::load(resolveTracePath(o.cfg.trace));
-  const RunResult r = runOnce(o.cfg, trace);
+  std::unique_ptr<CsvWriter> csv;
+  if (!o.cfg.csv_dir.empty()) {
+    std::filesystem::create_directories(o.cfg.csv_dir);
+    csv = std::make_unique<CsvWriter>((std::filesystem::path(o.cfg.csv_dir) /
+                                       (o.cfg.runId() + "_" + o.cfg.algoLabel() + "_" + o.cfg.trace + "_" +
+                                        std::to_string(o.cfg.buffer_pkts) + ".csv"))
+                                          .string());
+  }
+  const RunResult r = runOnce(o.cfg, trace, 0, [&csv](const Sample& smp) {
+    if (csv) csv->write(smp);
+  });
   const std::string json = runResultToJson(r);
   out << json << "\n";
   if (!o.out_file.empty()) {
@@ -52,6 +66,35 @@ int doRun(RunOptions& o, std::ostream& out) {
     if (!f) throw std::runtime_error("cannot write " + o.out_file);
     f << json << "\n";
   }
+  return 0;
+}
+
+struct MatrixCliOptions {
+  std::string phase = "p1";
+  std::string out_file;
+  double duration_s = 0.0;
+  std::size_t limit = 0;
+};
+
+int doMatrix(const MatrixCliOptions& o, std::ostream& err) {
+  if (o.phase != "p1" && o.phase != "p2") throw std::invalid_argument("phase must be p1 or p2");
+  MatrixOptions mo;
+  mo.phase = o.phase;
+  mo.duration = static_cast<Duration>(o.duration_s * 1e9);
+  mo.limit = o.limit;
+  std::size_t done = 0;
+  mo.on_done = [&](const RunConfig& c, const RunResult&) {
+    err << "[" << ++done << "] " << c.runId() << " " << c.algoLabel() << " " << c.trace << " buffer=" << c.buffer_pkts
+        << " mode=" << c.mode << "\n";
+  };
+  const MatrixResult m = runMatrix(mo);
+  std::vector<std::string> entries;
+  for (const RunResult& r : m.runs) entries.push_back(runResultToJson(r));
+  const std::string json = resultsFileJson(ResultsHeader{o.phase, m.runtime_s}, entries);
+  std::ofstream f(o.out_file, std::ios::binary);
+  if (!f) throw std::runtime_error("cannot write " + o.out_file);
+  f << json << "\n";
+  err << m.runs.size() << " runs in " << m.runtime_s << " s -> " << o.out_file << "\n";
   return 0;
 }
 
@@ -72,13 +115,22 @@ int runMain(const std::vector<std::string>& args, std::ostream& out, std::ostrea
   run->add_option("--duration-s", ro.duration_s, "simulated seconds");
   run->add_option("--seed", ro.cfg.seed, "seed for flow start jitter");
   run->add_option("--phase", ro.cfg.phase, "p1|p2 (label only)");
+  run->add_option("--csv", ro.cfg.csv_dir, "write the 10 ms samples to a CSV file in this directory");
   run->add_option("--out", ro.out_file, "also write the JSON to this file");
   run->add_option("--cc-param", ro.cc_params, "controller override key=value; repeatable");
+
+  MatrixCliOptions mx;
+  CLI::App* matrix = app.add_subcommand("matrix", "run the full 250-run experiment matrix");
+  matrix->add_option("--phase", mx.phase, "p1|p2")->required();
+  matrix->add_option("--out", mx.out_file, "results JSON file")->required();
+  matrix->add_option("--duration-s", mx.duration_s, "override the 60 s run length (smoke tests)");
+  matrix->add_option("--limit", mx.limit, "only the first N runs (smoke tests)");
 
   try {
     std::vector<std::string> rev(args.rbegin(), args.rend() - 1);  // CLI11 wants argv reversed, without argv[0]
     app.parse(std::move(rev));
     if (run->parsed()) return doRun(ro, out);
+    if (matrix->parsed()) return doMatrix(mx, err);
   } catch (const CLI::ParseError& e) {
     return app.exit(e, out, err) == 0 ? 0 : 2;
   } catch (const std::invalid_argument& e) {

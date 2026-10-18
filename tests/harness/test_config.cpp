@@ -112,6 +112,7 @@ TEST(Config, MatrixIsExactly250RunsWithTheSpecComposition) {
   EXPECT_EQ(sweep[150.0], 20);
   EXPECT_EQ(sweep[300.0], 20);
   EXPECT_EQ(allTraceNames().size(), 10u);
+  for (const auto& r : runs) validate(r);
 }
 
 TEST(Config, ResolveTracePathFindsSyntheticAndReportsMisses) {

@@ -71,3 +71,19 @@ TEST(Filters, RateWindowRandomMatchesBruteForce) {
     }
   }
 }
+
+TEST(Filters, WarmRateDividesByDataAgeWhileTheWindowFills) {
+  RateWindow rw(fromSec(1));
+  EXPECT_DOUBLE_EQ(rw.rateBpsWarm(fromMs(5), fromMs(250)), 0.0);  // no samples yet
+  for (int i = 0; i < 50; ++i) rw.add(fromMs(100 + i), 1250);      // 1 pkt/ms from t = 100 ms
+  // at t = 150 ms the data is 50 ms old: 10 Mbps, not 50 * 1250 * 8 / 0.25 s = 2 Mbps
+  EXPECT_NEAR(rw.rateBpsWarm(fromMs(149), fromMs(250)), 10e6, 0.3e6);
+  EXPECT_NEAR(rw.rateBps(fromMs(149), fromMs(250)), 2e6, 0.1e6);
+  // right after the first sample the divisor is floored at 20 ms
+  RateWindow fresh(fromSec(1));
+  fresh.add(fromMs(10), 1250);
+  EXPECT_DOUBLE_EQ(fresh.rateBpsWarm(fromMs(10), fromMs(250)), 1250.0 * 8.0 / 0.02);
+  // once the window is full both agree
+  for (int i = 50; i < 400; ++i) rw.add(fromMs(100 + i), 1250);
+  EXPECT_DOUBLE_EQ(rw.rateBpsWarm(fromMs(499), fromMs(250)), rw.rateBps(fromMs(499), fromMs(250)));
+}

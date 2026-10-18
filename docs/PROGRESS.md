@@ -10,3 +10,4 @@ Start: 2026-10-18T08:40:29Z (UTC)
 - G0-G3: done (commits 32408f6..2ba8bf6); lines backfilled at G4 close. 171 C++ tests + 21 pytest green locally.
 - G4: telemetry, Loki pusher, compose, dashboard v1, smoke tool, loki-smoke CI job. Docker unavailable locally: smoke job runs in CI; dashboard screenshot is a manual step.
 - G4 fixes: flush() raced the drain loop (now only a drain started after the request clears it); MSVC C4244 in summary.cpp; Loki mocks made race-free. A TSan segfault in LokiPusher tests appeared once and did not reproduce on rerun (cause unknown, watching).
+- G5: Phase 1 matrix 250/250 runs (results/phase1.json, git f110d12, matrix 5637 s serial), bench_p1.json, README block generated; tag v0.1-baseline. CI status unverifiable locally (gh not authenticed).
